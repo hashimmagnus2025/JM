@@ -69,19 +69,27 @@ describe('date arithmetic', () => {
   });
 
   it('dateRange is inclusive and guarded', () => {
-    expect(dateRange('2026-10-08', '2026-10-10')).toEqual(['2026-10-08', '2026-10-09', '2026-10-10']);
+    expect(dateRange('2026-10-08', '2026-10-10')).toEqual([
+      '2026-10-08',
+      '2026-10-09',
+      '2026-10-10',
+    ]);
     expect(dateRange('2026-10-10', '2026-10-08')).toEqual([]);
     expect(() => dateRange('2000-01-01', '2026-01-01')).toThrowError(/exceeds/);
   });
 
   it('PROPERTY: addDays/diffDays are inverse and epoch round-trips', () => {
     fc.assert(
-      fc.property(fc.integer({ min: -20_000, max: 40_000 }), fc.integer({ min: -3_000, max: 3_000 }), (e, n) => {
-        const d = fromEpochDay(e);
-        expect(isBusinessDate(d)).toBe(true);
-        expect(toEpochDay(d)).toBe(e);
-        expect(diffDays(d, addDays(d, n))).toBe(n);
-      }),
+      fc.property(
+        fc.integer({ min: -20_000, max: 40_000 }),
+        fc.integer({ min: -3_000, max: 3_000 }),
+        (e, n) => {
+          const d = fromEpochDay(e);
+          expect(isBusinessDate(d)).toBe(true);
+          expect(toEpochDay(d)).toBe(e);
+          expect(diffDays(d, addDays(d, n))).toBe(n);
+        },
+      ),
     );
   });
 });

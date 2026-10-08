@@ -1,0 +1,18 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "claude/eager-turing-u8m8c9",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "claude/eager-turing-u8m8c9": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "claude/eager-turing-u8m8c9",
+    "origin"
+  ]
+}

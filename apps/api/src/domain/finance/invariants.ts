@@ -38,7 +38,8 @@ export function assertReceivable(r: Receivable): void {
     for (const v of [c.payable, c.adjusted, c.transferred, c.paid]) {
       if (!isPaise(v) || v < 0) fail('invalid component amount', { id: r.id, component: c.code });
     }
-    if (componentPending(c) < 0) fail('component pending is negative', { id: r.id, component: c.code });
+    if (componentPending(c) < 0)
+      fail('component pending is negative', { id: r.id, component: c.code });
   }
   const sums = {
     payable: sumPaise(r.components.map((c) => c.payable)),
@@ -68,11 +69,17 @@ export function assertAllocationConservation(
 ): void {
   const allocated = sumPaise(allocations.map((a) => a.amount));
   if (allocated + unallocated !== paymentAmount) {
-    fail('allocations + unallocated do not equal the payment amount', { paymentAmount, allocated, unallocated });
+    fail('allocations + unallocated do not equal the payment amount', {
+      paymentAmount,
+      allocated,
+      unallocated,
+    });
   }
   for (const a of allocations) {
     if (sumPaise(a.componentSplit.map((s) => s.amount)) !== a.amount) {
-      fail('component split does not equal the allocation amount', { receivableId: a.receivableId });
+      fail('component split does not equal the allocation amount', {
+        receivableId: a.receivableId,
+      });
     }
   }
 }

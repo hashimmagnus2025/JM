@@ -77,15 +77,23 @@ function includedLines(lines: readonly FeeLine[]): FeeLine[] {
   const out: FeeLine[] = [];
   const seen = new Set<string>();
   for (const l of lines) {
-    if (seen.has(l.code)) throw new FinanceError('FEE_LINES_INVALID', `duplicate fee component ${l.code}`);
+    if (seen.has(l.code))
+      throw new FinanceError('FEE_LINES_INVALID', `duplicate fee component ${l.code}`);
     seen.add(l.code);
     if (!Number.isSafeInteger(l.amount) || l.amount < 0) {
-      throw new FinanceError('FEE_LINES_INVALID', `fee line ${l.code} must be a non-negative whole paise amount`);
+      throw new FinanceError(
+        'FEE_LINES_INVALID',
+        `fee line ${l.code} must be a non-negative whole paise amount`,
+      );
     }
     if (l.included === false || l.amount === 0) continue;
     out.push(l);
   }
-  if (out.length === 0) throw new FinanceError('FEE_LINES_INVALID', 'at least one fee component with an amount is required');
+  if (out.length === 0)
+    throw new FinanceError(
+      'FEE_LINES_INVALID',
+      'at least one fee component with an amount is required',
+    );
   return out;
 }
 
@@ -96,9 +104,13 @@ function scheduleComponent(
   placement: 'LAST' | 'FIRST',
 ): Paise[] {
   const n = installments.length;
-  const entries = installments.map((i) => i.componentSchedule?.find((e) => e.componentCode === line.code));
+  const entries = installments.map((i) =>
+    i.componentSchedule?.find((e) => e.componentCode === line.code),
+  );
   if (entries.every((e) => e === undefined)) {
-    return placement === 'LAST' ? splitEvenRemainderLast(line.amount, n) : splitEvenRemainderFirst(line.amount, n);
+    return placement === 'LAST'
+      ? splitEvenRemainderLast(line.amount, n)
+      : splitEvenRemainderFirst(line.amount, n);
   }
 
   const listed = entries.filter((e): e is ComponentScheduleEntry => e !== undefined);
@@ -106,18 +118,22 @@ function scheduleComponent(
   const fixed = listed.filter((e) => e.mode === 'FIXED');
   const pct = listed.filter((e) => e.mode === 'PERCENT_BP');
   const mismatch = (reason: string): never => {
-    throw new FinanceError('COMPONENT_SCHEDULE_MISMATCH', `${line.code}: ${reason}`, { component: line.code });
+    throw new FinanceError('COMPONENT_SCHEDULE_MISMATCH', `${line.code}: ${reason}`, {
+      component: line.code,
+    });
   };
   if (remainders.length > 1) mismatch('only one REMAINDER installment is allowed');
   for (const e of [...fixed, ...pct]) {
-    if (!Number.isSafeInteger(e.value) || (e.value ?? 0) <= 0) mismatch('schedule values must be positive whole numbers');
+    if (!Number.isSafeInteger(e.value) || (e.value ?? 0) <= 0)
+      mismatch('schedule values must be positive whole numbers');
   }
 
   const col: Paise[] = Array.from({ length: n }, () => 0);
   if (remainders.length === 0) {
     if (pct.length === 0) {
       // all FIXED
-      if (sumPaise(fixed.map((e) => e.value ?? 0)) !== line.amount) mismatch('fixed amounts must add up to the component amount');
+      if (sumPaise(fixed.map((e) => e.value ?? 0)) !== line.amount)
+        mismatch('fixed amounts must add up to the component amount');
       entries.forEach((e, i) => (col[i] = e?.value ?? 0));
     } else if (fixed.length === 0) {
       // all PERCENT — must be exactly 100 %, split exactly by largest remainder
@@ -183,19 +199,35 @@ export function buildInstallments(input: BuildInstallmentsInput): Receivable[] {
 
   if (input.plan.kind === 'FULL') {
     assertBusinessDate(input.plan.dueDate, 'due date');
-    slots = [{ no: 1, label: 'Full payment', dueDate: input.plan.dueDate, amounts: lines.map((l) => l.amount) }];
+    slots = [
+      {
+        no: 1,
+        label: 'Full payment',
+        dueDate: input.plan.dueDate,
+        amounts: lines.map((l) => l.amount),
+      },
+    ];
   } else if (input.plan.kind === 'CUSTOM') {
     const items = input.plan.installments;
     if (items.length === 0) bad('a custom plan needs at least one installment');
     items.forEach((i, idx) => {
       assertBusinessDate(i.dueDate, `installment ${idx + 1} due date`);
-      if (!Number.isSafeInteger(i.amount) || i.amount <= 0) bad('custom installment amounts must be positive whole paise');
+      if (!Number.isSafeInteger(i.amount) || i.amount <= 0)
+        bad('custom installment amounts must be positive whole paise');
     });
     if (sumPaise(items.map((i) => i.amount)) !== gross) {
-      bad('custom installments must add up to the total fee', { total: gross, given: sumPaise(items.map((i) => i.amount)) });
+      bad('custom installments must add up to the total fee', {
+        total: gross,
+        given: sumPaise(items.map((i) => i.amount)),
+      });
     }
-    const sorted = [...items].sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0));
-    const matrix = customMatrix(lines, sorted.map((i) => i.amount));
+    const sorted = [...items].sort((a, b) =>
+      a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0,
+    );
+    const matrix = customMatrix(
+      lines,
+      sorted.map((i) => i.amount),
+    );
     slots = sorted.map((i, idx) => ({
       no: idx + 1,
       label: i.label ?? `Installment ${idx + 1}`,
@@ -216,7 +248,8 @@ export function buildInstallments(input: BuildInstallmentsInput): Receivable[] {
     for (let k = 1; k < ordered.length; k++) {
       const prev = ordered[k - 1];
       const cur = ordered[k];
-      if (prev && cur && isBefore(cur.dueDate, prev.dueDate)) bad('installment due dates must not go backwards');
+      if (prev && cur && isBefore(cur.dueDate, prev.dueDate))
+        bad('installment due dates must not go backwards');
     }
     const columns = lines.map((l) => scheduleComponent(l, ordered, placement));
     slots = ordered.map((i, idx) => ({
@@ -251,7 +284,11 @@ export function buildInstallments(input: BuildInstallmentsInput): Receivable[] {
     );
   }
   if (sumPaise(out.map((r) => r.payable)) !== gross) {
-    throw new FinanceError('INVARIANT_VIOLATION', 'generated installments do not add up to the fee', { gross });
+    throw new FinanceError(
+      'INVARIANT_VIOLATION',
+      'generated installments do not add up to the fee',
+      { gross },
+    );
   }
   return out;
 }

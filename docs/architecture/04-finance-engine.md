@@ -259,7 +259,7 @@ Success: receipt number, [Print] [Download PDF] [WhatsApp/Email (if integrated)]
       matchedCount≠1 → abort txn → retry (bounded) with fresh state or 409 RECEIVABLE_VERSION_CONFLICT
       insert PaymentAllocation (immutable)
 6.  recompute StudentYearBalance(s)
-7.  create Receipt (receiptNo from counter, snapshot incl. previous/remaining balance)
+7.  create Receipt (receiptNo from an atomic counter increment taken OUTSIDE the transaction and reserved once per command; snapshot incl. previous/remaining balance)
 8.  AuditLog: PAYMENT_CREATED, RECEIPT_GENERATED (same txn, hash-chained)
 9.  commit
 10. afterCommit: bump finance cache version · cancel QUEUED reminders of fully-paid receivables ·
@@ -267,7 +267,7 @@ Success: receipt number, [Print] [Download PDF] [WhatsApp/Email (if integrated)]
 11. respond { payment, receipt, allocations, studentBalance }
 ```
 
-**Concurrency guarantees:** two cashiers paying the same installment concurrently → the second guarded `$inc` fails → retried against fresh state → either allocates the remaining amount or returns `PAYMENT_EXCEEDS_OUTSTANDING`. **Double-click / network retry** → same `Idempotency-Key` → one payment. **Same UPI ref twice** → unique index → `409 DUPLICATE_TRANSACTION_REF`.
+**Concurrency guarantees:** two cashiers paying the same installment concurrently → the second guarded update loses (`version` check) → the whole transaction is retried against fresh data → it either allocates the remaining amount or returns `PAYMENT_EXCEEDS_OUTSTANDING`. **Double-click / network retry** → same `Idempotency-Key` → one payment. **Same UPI ref twice** → unique index → `409 DUPLICATE_TRANSACTION_REF`. **No global serialisation point:** sequence counters are incremented atomically *outside* the transaction (gaps are allowed by BRC-G1), so payments for different students never conflict — a design flaw (every payment write-conflicting on one counter document) was found by mutation testing in Phase 1 and removed.
 
 ### 11.3 State machines
 
@@ -290,7 +290,7 @@ Receivable.paymentStatus: UNPAID ⇄ PARTIAL ⇄ PAID  (driven only by engine wr
 
 ### 11.5 Receipts
 
-- Number = `REC-{scopeYear}-{seq:000000}` (decided BRC-G1) from `counters` inside the txn; prefix and scope (`ACADEMIC_YEAR` | `CALENDAR_YEAR` | `FINANCIAL_YEAR` | `NONE`) are settings; **unique, never reused, gaps allowed**; clients can never supply a number; one receipt per payment; never renumbered.
+- Number = `REC-{scopeYear}-{seq:000000}` (decided BRC-G1) from `counters` via an **atomic increment outside the transaction** (no contention; an aborted payment may leave a gap, a number is never reused); prefix and scope (`ACADEMIC_YEAR` | `CALENDAR_YEAR` | `FINANCIAL_YEAR` | `NONE`) are settings; **unique, never reused, gaps allowed**; clients can never supply a number; one receipt per payment; never renumbered.
 - Content = SOW §41 field list, all from the **snapshot**; reprints add a "Duplicate copy" marker and increment `printCount`.
 - PDF: pdfmake, embedded Noto Sans (₹), logo from object storage, cached in S3 by `hash(snapshot)+templateVersion`; browser print CSS for 80 mm thermal & A5/A4 layouts (**BRC-G1** printer type).
 - Cancelled receipts remain retrievable with a visible CANCELLED status and cancellation reason/user/time.

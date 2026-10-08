@@ -70,7 +70,7 @@ This realises ① oldest overdue, ② opening balance, ③ penalty, ④ oldest p
 - **Reversal report columns:** original payment date · original amount · reversal date · reversed amount · reason · authorized by.
 
 ### G1 · Receipt numbers
-`REC-{scopeKey}-{seq:000000}`; `scope ∈ ACADEMIC_YEAR | CALENDAR_YEAR | FINANCIAL_YEAR | NONE` (NONE → `REC-000001`). Counter key = `receipt:{prefix}:{scopeKey}`. Cancelled receipts keep their numbers; **gaps are allowed** (the baseline's "gap-free" requirement is withdrawn).
+`REC-{scopeKey}-{seq:000000}`; `scope ∈ ACADEMIC_YEAR | CALENDAR_YEAR | FINANCIAL_YEAR | NONE` (NONE → `REC-000001`). Counter key = `receipt:{prefix}:{scopeKey}`. Cancelled receipts keep their numbers; **gaps are allowed** (the baseline's "gap-free" requirement is withdrawn). Implementation note (found by mutation testing): sequence counters are **atomic increments outside the DB transaction** and are reserved **once per command** (reused when the transaction retries) — this is what removes any global serialisation of payments; the price is that an aborted payment can leave an unused number, which this decision explicitly allows.
 
 ### I1/I2 · Status & metrics (engine definitions)
 - `PAID` ⇔ `pending = 0` ∧ `¬hasPendingAdjustment`. A zero-balance receivable that still has a pending adjustment is shown as **`PENDING_ADJUSTMENT`** (CL-09), never "Paid".
