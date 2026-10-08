@@ -8,24 +8,28 @@
 
 ### 7.1 Shape of the engine
 
-`apps/api/src/domain/finance/` — **pure TypeScript, no I/O, no `Date.now()`, no Mongoose.** Inputs/outputs are plain data (integers in paise, `BusinessDate` strings). Services load data, call the engine, persist results inside a transaction.
+`apps/api/src/domain/finance/` — **pure TypeScript, no I/O, no `Date.now()`, no Mongoose.** Money and business-date primitives live in `packages/shared` (also pure). Inputs/outputs are plain data (integer paise, `BusinessDate` strings). Services load data, call the engine, persist the result inside a transaction.
 
 ```
+packages/shared/        money.ts (paise, BigInt-safe percent, largest-remainder splits, INR format) · dates.ts (BusinessDate, IST Clock) · canonical.ts
 domain/finance/
-  money.ts            paise helpers, safe-integer guards, largest-remainder split, bp percent (round-half-up)
-  dates.ts            BusinessDate add/diff/compare, IST "today" via injected Clock
-  resolve-structure.ts   pick the applicable FeeStructure slot (precedence rules)
-  build-assignment.ts    lines snapshot + optional components + overrides → grossAmount
-  build-installments.ts  plan template | custom → receivables with component breakdown (rounding-safe)
-  opening-balance.ts     OB → single receivable (component OPENING_BALANCE), date rules
-  adjustments.ts         resolve discount/concession → per-receivable/component applications
-  late-fee.ts            policy + receivable + asOf → penalty receivables to post (idempotent keys)
-  allocate.ts            payment amount + open receivables + strategy → allocation rows (+ unallocated)
-  reverse.ts             original allocations → exact contra rows
-  status.ts              derive paymentStatus / dueStatus / display status / student-year state
-  summary.ts             receivables + allocations → summary, nextInstallment, overdue, aging
-  aging.ts               asOf bucketing
-  invariants.ts          assert*() used by services (defence in depth) and by property tests
+  types.ts errors.ts invariants.ts
+  fee-structure.ts       resolve the applicable structure slot (precedence)
+  fee-version.ts         content hash + immutability guard for published versions
+  build-installments.ts  plan | custom | full → receivables with component breakdown (rounding-safe)
+  opening-balance.ts     opening balance → one receivable (never gross fee)
+  carry-forward.ts       manual, audited carry-forward plan (never automatic)
+  adjustments.ts         discount/concession → per-receivable/component applications
+  late-fee.ts            policy + parent receivable + asOf → penalty postings (idempotent, append-only)
+  allocate.ts            payment → allocations (OLDEST_DUE_FIRST, MANUAL), component priority, apply
+  reversal.ts            compensating allocations + reversal report row
+  reversal-policy.ts     threshold-driven approval decision (no hard-coded amount)
+  payment-rules.ts       zero/invalid/overpayment validation
+  status.ts              paid / partial / due soon / overdue / fully settled
+  summary.ts             metrics (expected, collected, collection %, by year, all years)
+  aging.ts               0–30 / 31–60 / 61–90 / 90+ by original due date
+  receipt-number.ts      REC-2026-000001 formatting + scope key
+  preview.ts             buildFeePreview(): the ONE function used by both preview and admission save
 ```
 
 ### 7.2 Metric dictionary (the single definition of every number)
@@ -36,16 +40,17 @@ domain/finance/
 | **Opening Balance** | Σ `payable` of `kind=OPENING_BALANCE` | Carried-in dues. **Not new fee.** |
 | **Penalties** | Σ `payable` of `kind=PENALTY` | Late fees. |
 | **Adjustments** | Σ `adjusted` over all receivables (APPROVED only) | Discounts/concessions/waivers. |
-| **Net Receivable** | Gross Fee + Opening Balance + Penalties − Adjustments | = brief: *Opening + Fees + Penalties − Discounts*. |
+| **Transferred (carried forward)** | Σ `transferred` | Manual carry-forward only (BRC-D1). Not a discount, not collected. |
+| **Net Receivable** | Σ(`payable − adjusted − transferred`) over all receivables (= Gross Fee + Opening Balance + Penalties − Adjustments − Transferred) | = brief: *Opening + Fees + Penalties − Discounts*. |
 | **Collected** | Σ `paid` = Σ allocations (net of REVERSAL rows) | Brief's "− Payments − valid adjustments". |
 | **Outstanding** | Net Receivable − Collected = Σ `pending` | **SOW §19:** Payable − Paid − Adjustments. |
 | **Overdue** | Σ `pending` where `dueDate < today` | Time-dependent → computed at query time. |
 | **Due Soon** | Σ `pending` where `today ≤ dueDate ≤ today + dueSoonDays` | `dueSoonDays` setting (BRC-I1). |
 | **Not Yet Due** | Σ `pending` where `dueDate > today + dueSoonDays` | |
-| **Expected Fees (dashboard)** | **Proposed:** Gross Fee + Penalties − Adjustments (*current-year demand*); Opening Balance shown as a **separate** column/line; "Total Receivable" = Net Receivable | **BRC-I2** — whether "Expected" includes carried-in dues. Both numbers always available. |
-| **Collection %** | Collected ÷ Net Receivable (scope) | Alternative "due-to-date efficiency" = collected-on-due ÷ due-to-date (BRC-I2). |
+| **Expected Fees** | Σ(`payable − adjusted`) over `kind=INSTALLMENT` receivables in scope — the applicable fee obligation **after approved discounts**. **Opening balance is excluded and shown separately; penalties are excluded by default** (setting `metrics.expectedIncludesPenalties`). | **Decided (BRC-I2); CL-10.** |
+| **Collection %** | Collected ÷ Expected × 100, where *Collected* = Σ`paid` over the **same** installment receivables (so it cannot exceed 100 %). Computed in basis points; 0 when Expected = 0. Opening-balance and penalty collections have their own lines. | **Decided (BRC-I2).** |
 | **Today's / Monthly / Period Collection** | Σ allocations by `postingDate` in period (REVERSAL rows negative on reversal date) | Payment-method/collector reports use `payments` (gross) with a reversal toggle. |
-| **Aging bucket** | `daysOverdue = today − dueDate` for pending receivables: *Not due* (≤0) · **0–30**→ days 1–30 · 31–60 · 61–90 · 90+ | **BRC-I2:** whether not-yet-due is shown as its own bucket (proposed) and whether opening balance ages from `dueDate` (proposed = effectiveDate). |
+| **Aging bucket** | `days = today − originalDueDate` for `pending>0` receivables: **0–30 · 31–60 · 61–90 · 90+** (boundaries configurable), future-dated → *Not yet due*. Opening balance ages from its configured effective/due date. | **Decided (BRC-I2); CL-11** (0–30 includes due-today; *Overdue* KPI = `dueDate < today`). |
 | **Students: Paid / Partial / Unpaid / Overdue / Due soon** | From `student_year_balances` (+ earliestPendingDueDate) | See 7.9. |
 
 Every dashboard tile, report and export uses this dictionary through one query service (`FinanceQueryService`) — reconciliation is a test (`dashboard.expected === Σ(report rows)`).
@@ -54,10 +59,10 @@ Every dashboard tile, report and export uses this dictionary through one query s
 
 ```
 payable ≥ 0
-adjusted ≥ 0, paid ≥ 0
-adjusted + paid ≤ payable                        → pending ≥ 0
-pending = payable − adjusted − paid              (per receivable AND per component)
-Σ component.payable = receivable.payable  (same for adjusted, paid)
+adjusted ≥ 0, transferred ≥ 0, paid ≥ 0
+adjusted + transferred + paid ≤ payable      → pending ≥ 0
+pending = payable − adjusted − transferred − paid   (per receivable AND per component)
+Σ component.payable = receivable.payable  (same for adjusted, transferred, paid)
 Σ installments.payable (per component) = assignment line amount
 Σ allocations(payment) + unallocated = payment.amount
 reversal(allocations(p)) ∘ allocations(p) = identity on every touched receivable
@@ -93,22 +98,30 @@ For each component *c* with amount *A_c* and schedule entries *s_k* for installm
 - Caps: cannot exceed `payable − paid − already adjusted` of the target; may not reduce below what is already paid (that would be a *refund*, out of scope → `422 ADJUSTMENT_EXCEEDS_PAYABLE`).
 - Applied only when `APPROVED`; original `payable` untouched ⇒ **"original fee information remains traceable"** (SOW §39).
 
-### 7.7 Late fee engine
+### 7.7 Late fee engine (decided: BRC-F1)
 
-`computePenalties(receivable, policy, asOf) → PenaltyPosting[]` where each posting has a deterministic `periodKey` (`"2026-10-15"` for daily, `"once"` for fixed). A nightly BullMQ job (`penalty.accrue`, 00:30 IST) posts missing periods through the service, inside a transaction, relying on the unique `dedupeKey` ⇒ **running it twice posts nothing new.** Base = receivable `pending` at period end (so paid amounts don't attract penalty). Grace days, cap, applicability to opening balance, compounding = **BRC-F1**. Waiver = `PENALTY_WAIVER` adjustment (needs approval). **Materialising** penalties as real receivables (vs. computing on the fly) is the recommended default: receipts, balances and reminders stay stable and auditable; the setting `lateFee.materialize=false` selects on-the-fly computation for institutions that prefer it.
+**Policy** (versioned): `mode ∈ {FIXED, PER_DAY, PERCENT}` · `graceDays` (default 0) · `capPaise` (total per parent receivable) · `appliesToKinds` (default installments only) · `applyToOpeningBalance` (default **false**) · `installmentOverrides[installmentNo]` for installment-specific rules · `effectiveFrom/To`.
 
-### 7.8 Payment allocation engine
+`computePenaltyPostings({ parent, policy, asOf, paidEvents, existingPostings }) → PenaltyPosting[]`:
+- First penalty day = `dueDate + graceDays + 1`. `FIXED` → one posting; `PERCENT` → one posting of `bp × pending-on-first-penalty-day`; `PER_DAY` → one posting per overdue day on which the parent still has a balance. Postings are clipped by the remaining cap and skipped if their deterministic `periodKey` already exists ⇒ **running twice posts nothing new**.
+- `pending-on-day d` is reconstructed from the parent's payable/adjusted/transferred minus allocations posted on or before `d` (`paidEvents`), so a late-running job charges exactly what an on-time job would have.
+- Never on a `PENALTY`; on `OPENING_BALANCE` only if configured. Penalties are **separate `PENALTY` receivables** (component `LATE_FEE`, `parentReceivableId`, `policyId`, `policyVersion`). **Once posted they are history:** later policy versions affect only days on/after their `effectiveFrom`; receipts are snapshots and never recomputed.
+- Posting is done by the nightly job (`penalty.accrue`) inside a transaction; unique `dedupeKey` is the DB-level guarantee. Waiver = `PENALTY_WAIVER` adjustment (approval required). Interpretation notes: CL-03, CL-04, CL-05.
 
-`allocate({ amount, receivables, strategy, manual? }) → { allocations[], unallocated }` — **pure and deterministic**.
+### 7.8 Payment allocation engine (decided: BRC-E1)
+
+`allocatePayment({ amount, receivables, today, strategy, componentPriority, mode, manual?, eligibleReceivableIds?, advanceEnabled }) → { allocations[], unallocated }` — **pure and deterministic**. Receivables of **all academic years** of the student are candidates (Model A, BRC-D1); each allocation records the receivable's own year.
 
 | Strategy (setting `allocation.strategy`) | Order |
 |---|---|
-| `OLDEST_DUE_FIRST` *(proposed default, BRC-E1)* | by `dueDate` asc → kind priority (`OPENING_BALANCE` → `PENALTY` → `INSTALLMENT`) → `installmentNo` |
-| `PENALTY_FIRST` | all penalties, then oldest due |
-| `CURRENT_FIRST` | the next due receivable first, then oldest |
-| `MANUAL` | caller-supplied `[{receivableId, amount}]`; validated (each ≤ pending; Σ ≤ amount; requires `payment.allocateManual`) |
+| **`OLDEST_DUE_FIRST`** *(decided default)* | **Tier 0 — overdue** (`dueDate < today`): `dueDate` ↑ → kind rank (`OPENING_BALANCE`, `PENALTY`, `INSTALLMENT`) → installment no. → id. **Tier 1 — not yet overdue:** kind rank → `dueDate` ↑ → installment no. → id. (⇒ ① oldest overdue ② opening balance ③ penalty ④ oldest pending installment ⑤ newer installments; CL-01) |
+| `MANUAL` | caller-supplied `[{receivableId, amount}]`; each ≤ that receivable's pending; Σ must equal the payment (or the remainder is advance credit when enabled); requires `payment.allocateManual` |
+| *(future)* `PENALTY_FIRST`, `CURRENT_FIRST` | registry slots — strategy is a setting; the strategy used is stored on every payment (`allocationStrategy`) |
 
-Within a receivable, the amount splits across components by `allocation.componentSplit` (**BRC-E1**): `PRO_RATA` over remaining component balances (largest-remainder, proposed) or `COMPONENT_PRIORITY` (configured order). Fee-type-wise outstanding (SOW §19) depends on this being recorded per allocation (`componentSplit`).
+**Within one receivable:** amount is applied component-by-component in `allocation.componentPriority` order (codes not listed follow in the receivable's own component order) — **not pro-rata** (CL-02: priority list to be supplied). Each allocation row stores `componentSplit`, which feeds fee-type-wise outstanding (SOW §19).
+
+**Every allocation is an immutable row** (`payment_allocations`); reversals add negative rows (§11.4).
+
 
 **Worked examples**
 - SOW §17: I1 pending 5,000; I2 pending 15,000; pay 20,000 → I1 5,000 (PAID), I2 15,000 (PAID).
@@ -116,21 +129,23 @@ Within a receivable, the amount splits across components by `allocation.componen
 - SOW §12/§15: I2 = 15,000, pay 10,000 → PARTIAL, 5,000 pending appears in outstanding reports.
 - Pay > total pending → rejected `PAYMENT_EXCEEDS_OUTSTANDING` unless `advance.enabled` → excess stored as `unallocatedAmount` (credit) (**BRC-E2/E3**).
 
-### 7.9 Status derivation (two orthogonal dimensions)
+### 7.9 Status derivation (decided: BRC-I1)
 
-Stored per receivable: `paymentStatus ∈ {UNPAID, PARTIAL, PAID, WAIVED, VOID}`.
-Derived at read time: `dueStatus ∈ {NOT_DUE, DUE_SOON, OVERDUE}` from `dueDate`, `today`, `dueSoonDays` (only when `pending > 0`).
+Stored per receivable: `paymentStatus ∈ {UNPAID, PARTIAL, PAID, WAIVED, VOID}` (engine-written).
+Derived at read time: `dueStatus ∈ {NOT_DUE, DUE_SOON, OVERDUE}` from `dueDate`, `today`, `dueSoonDays` (**default 7**, setting `status.dueSoonDays`) — only when `pending > 0`.
 
-| SOW §12/§18 term | Rendered when |
+| SOW term | Definition implemented |
 |---|---|
-| **Pending / Unpaid** | `UNPAID` and not due-soon/overdue |
-| **Partially Paid** | `PARTIAL` |
-| **Paid** | `PAID` (installment level) |
-| **Due Soon** | `pending>0` and `DUE_SOON` (badge combines: "Partially paid · Due soon") |
-| **Overdue** | `pending>0` and `OVERDUE` |
-| **Fully Settled** | *Student-year level*: every receivable `PAID/WAIVED/VOID`, `pending = 0`, no pending approvals/unapplied credit (**proposed**; BRC-I1) |
+| **Pending / Unpaid** | `pending > 0`, nothing paid, not due-soon/overdue |
+| **Partially Paid** | `0 < paid` and `pending > 0` |
+| **Paid** | `pending = 0` **and no active pending adjustment on that receivable** |
+| *(zero balance but a pending adjustment exists)* | `PENDING_ADJUSTMENT` — never shown as Paid (CL-09) |
+| **Due Soon** | `pending > 0` and `dueDate − dueSoonDays ≤ today ≤ dueDate` |
+| **Overdue** | `pending > 0` and `dueDate < today` |
+| **Fully Settled** | the **complete obligation of the student/fee scope** (one academic year, or all years) is cleared: every non-void receivable has `pending = 0` and no pending adjustment (service adds: no pending reversal) |
 
-Student-year state (`student_year_balances.paymentState` + `earliestPendingDueDate`) → dashboard buckets **Paid / Partial / Unpaid / Overdue / Due soon**; an *Overdue* student is also counted in Partial or Unpaid, so the UI shows overdue as an **overlay filter**, not a mutually exclusive bucket — avoids the SOW §30 example's ambiguity (1,250 + 300 + 200 + 100 = 1,850 treats Overdue as exclusive → **BRC-I1**).
+Student-year state (`student_year_balances.paymentState` + `earliestPendingDueDate`) → dashboard buckets **Paid / Partial / Unpaid / Overdue / Due soon**; overdue is an **overlay** (an overdue student is also Partial or Unpaid) — SOW §30's exclusive example is therefore shown as an overlay filter (BRC-I1).
+
 
 ### 7.10 Outstanding formula reconciliation
 
@@ -189,18 +204,13 @@ A **carried-in amount a student already owes** when they enter the system (migra
 | Visibility | Student 360 (Fees tab: own line + header chip), Fee Summary card, Financial History timeline, Outstanding/Overdue/Aging reports (own column + filter `kind`), **Opening Balance Report**, Audit Log (CREATED / REVERSED with before/after), Import preview. |
 | Import | Migration import validates: student exists, year exists, amount > 0, effective date within/before the year, **no ACTIVE OB already** (→ `DUPLICATE`), batch reconciliation total shown before commit. |
 
-### 8.3 Prior-year dues vs. opening balance (critical, BRC-D1)
-Two coherent models; the engine supports both, we need the client's choice:
+### 8.3 Prior-year dues vs. opening balance — **DECIDED (BRC-D1): keep unpaid dues in their original academic year**
 
-| | **Model A — Aggregate (proposed)** | **Model B — Carry-forward posting** |
-|---|---|---|
-| Prior-year unpaid fees | stay on the **prior year's** receivables (never mutated) | prior receivables are *closed* by a carry-forward entry; new year gets an `OPENING_BALANCE(source=CARRY_FORWARD)` |
-| Student "total outstanding" | Σ across years (receivables are year-tagged) | current-year ledger only |
-| Opening balance used for | **migration / external dues only** | migration + every year-end |
-| Double-counting risk | none | must close the old receivable exactly once |
-| Aging | natural (original due dates) | restarts unless original dates are kept |
+- Unpaid fees of 2025-26 **stay on 2025-26 receivables**; 2026-27 gets only its own new fees. Nothing is converted to an opening balance automatically, ever.
+- Student financial history shows `2025-26 outstanding ₹10,000` and `2026-27 fee ₹50,000` separately, plus a labelled **cross-year total receivable** (`summarizeAll`). Payment allocation spans years oldest-first (§7.8); every allocation keeps the receivable's own year.
+- **Opening balance** is therefore used for **migration / external dues** and for an *explicit* carry-forward only.
+- **Explicit carry-forward** (optional, manual, permission-gated, reason mandatory, audited): `planCarryForward` moves the pending amount of chosen source receivables into `transferred` and creates one `OPENING_BALANCE(source=CARRY_FORWARD, carryForwardFrom=[…])` in the target year. Total outstanding is unchanged; the source year's Collected is unchanged; the transfer is neither a discount nor a collection (CL-12).
 
-**Proposed: Model A.** It never rewrites a prior year, ages correctly, and needs no year-end ritual.
 
 ### 8.4 Tests (see §17)
 OB creation (+amount, gross unchanged) · duplicate OB blocked · OB + installments + concession arithmetic (§7.11) · partial payment allocation to OB first · OB reversal blocked when paid · import commit twice → single OB · audit entry present · aging bucket of OB.
@@ -273,14 +283,14 @@ Receivable.paymentStatus: UNPAID ⇄ PARTIAL ⇄ PAID  (driven only by engine wr
 ### 11.4 Reversal workflow (`POST /payments/:id/reverse`)
 
 1. Requires `payment.reverse`, reason code + text (mandatory), original payment `POSTED`.
-2. If approval required → create `PENDING_APPROVAL` (no financial effect yet; UI shows banner "Reversal awaiting approval").
+2. If `reversal.approval.thresholdPaise` is set and the payment amount ≥ threshold → create `PENDING_APPROVAL` (no financial effect yet; UI shows banner "Reversal awaiting approval"); approver must be a different user with `payment.reverseApprove`. **Default: threshold unset → no approval step.**
 3. On completion (immediately or after approver): in one transaction — for each original allocation insert a **REVERSAL allocation (negative)** with `postingDate = today`; guarded `$inc` restores `paid/pending`/component counters; payment `status=REVERSED`, `uniqueRefKey` unset (re-entry possible); receipt `CANCELLED`; recompute balances; audit `PAYMENT_REVERSED` (+ `RECEIPT_CANCELLED`) with before/after and reason; if the reversal re-opens a receivable that had been cleared before a penalty cut-off, penalties are *not* back-dated automatically (**BRC-E6**).
 4. Cascade: if a reversed payment's allocations were later "consumed" by advance-adjustments, those are reversed first, in order (edge case #E17).
 5. After commit: cancel nothing in reminders (balance re-opened ⇒ future rules apply again naturally).
 
 ### 11.5 Receipts
 
-- Number from `counters` inside the txn — format/series/reset policy configurable (**BRC-G1**); gap-free; unique `(series, receiptNo)`; one per payment.
+- Number = `REC-{scopeYear}-{seq:000000}` (decided BRC-G1) from `counters` inside the txn; prefix and scope (`ACADEMIC_YEAR` | `CALENDAR_YEAR` | `FINANCIAL_YEAR` | `NONE`) are settings; **unique, never reused, gaps allowed**; clients can never supply a number; one receipt per payment; never renumbered.
 - Content = SOW §41 field list, all from the **snapshot**; reprints add a "Duplicate copy" marker and increment `printCount`.
 - PDF: pdfmake, embedded Noto Sans (₹), logo from object storage, cached in S3 by `hash(snapshot)+templateVersion`; browser print CSS for 80 mm thermal & A5/A4 layouts (**BRC-G1** printer type).
 - Cancelled receipts remain retrievable with a visible CANCELLED status and cancellation reason/user/time.

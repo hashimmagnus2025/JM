@@ -33,6 +33,7 @@ lib/               errors.ts, pagination.ts, ids.ts (counters), crypto.ts, redac
 domain/
   finance/         PURE engine (7.1)               ← no I/O, 95%+ coverage gate
   academic/        pure rules (promotion mapping, capacity, year ranges)
+  billing/         PURE, isolated: active-student count & annual student charge (decision BRC-K1) — never imports domain/finance
 modules/           (each: routes.ts · controller.ts · service.ts · repository.ts · model.ts · mapper.ts · events.ts · *.test.ts · index.ts = public API)
   auth/  users/  roles/  permissions/(registry)  institution/  settings/
   academic-years/  classes/  divisions/  teachers/  teacher-assignments/
@@ -94,7 +95,7 @@ The SOW commercial page states **45–60 working days**; the SOW + this brief (4
 | **9 — Opening balance + Fee engine** | Fee preview, assignment, receivables generation, opening balance, adjustments (approval), **admission wizard**, balance projection | §7, §8, §10 | **Golden tests** (§7.11, SOW fixtures) green; wizard e2e |
 | **10 — Installments** | Restructure, reschedule, custom plans, statuses, late-fee engine + nightly job | §7.5–7.9 | Property tests; penalty idempotency |
 | **11 — Payments + Allocation** | Collect, allocation (auto/manual), idempotency, duplicate guards, reversal (+approval) | §11 | Concurrency tests (parallel payments, replay), reversal restores state |
-| **12 — Receipts** | Numbering, snapshot, PDF/print, reprint, cancel | §11.5 | Gap-free numbering test; PDF golden text test |
+| **12 — Receipts** | Numbering `REC-2026-000001`, snapshot, PDF/print, reprint, cancel | §11.5 | Unique, never-reused numbering test; PDF golden text test |
 | **13 — Outstanding + Overdue + Aging** | Outstanding views/grouping, aging, overdue, drill-downs, reconciliation job | §7.2 | Dashboard = report totals test |
 | **14 — Reminder engine** | Templates, rules, campaigns, queue, providers (console/in-app + first real), webhooks, history | §12 | Stop-when-cleared tests; dedupe tests |
 | **15 — Dashboard + Analytics** | All widgets, targets, forecast, snapshots, caching | §13 | p95 dashboard < 1.5 s on 25k-student seed |
@@ -132,7 +133,7 @@ The SOW commercial page states **45–60 working days**; the SOW + this brief (4
 | **Installments** | equal split with remainder → Σ exact; component-specific installments; custom plan Σ validation; full payment; mid-year admission overdue handling; regenerate = idempotent |
 | **Opening balance** | creates exactly one receivable; gross fee unchanged; duplicate blocked; import twice → one; reversal blocked if paid; ages from effective date; appears in summary/outstanding/audit |
 | **Partial payment** | SOW §15 (15,000 − 10,000 → Partial, 5,000 pending) |
-| **Allocation** | SOW §17 (5,000 + 15,000 ← 20,000 / 12,000); strategy variants; manual allocation validation; component pro-rata exactness; unallocated advance |
+| **Allocation** | SOW §17 (5,000 + 15,000 ← 20,000 / 12,000); oldest-due-first tiers; component-priority split; manual allocation validation; unallocated advance (only when enabled) |
 | **Outstanding** | §7.11 golden case = ₹35,000; formula equals SOW §19 & brief; per student/class/division/teacher/year/fee-type/installment all reconcile |
 | **Discount / concession** | fixed/percent; distribution strategies exact; cannot exceed payable; approval gate (pending doesn't reduce); original payable preserved |
 | **Late fee** | fixed/daily/percent; grace; cap; waived; **accrual job twice → no duplicates**; penalty after partial payment uses reduced base |

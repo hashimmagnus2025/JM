@@ -4,7 +4,7 @@
 
 | Rule | Detail |
 |---|---|
-| **IDs** | `_id: ObjectId`. Human IDs (`studentId`, `teacherCode`, `receiptNo`, `paymentNo`) come from the `counters` collection inside the creating transaction (gap-free on commit; rolled back on abort). Formats are configurable (**BRC-B1, BRC-G1**). |
+| **IDs** | `_id: ObjectId`. Human IDs (`studentId`, `teacherCode`, `receiptNo`, `paymentNo`) come from the `counters` collection. Receipt numbers are **unique and never reused; gaps are allowed** (decision BRC-G1; format `REC-2026-000001`). Other formats are configurable (BRC-B1). |
 | **Tenancy** | `institutionId` on every business document, first field of every compound index. |
 | **Money** | Integer **paise** (`Number.isSafeInteger` enforced by Zod + Mongoose validator). Percent = basis points. Field names carry the unit only when ambiguous: `amount`, `payable`, `paid`… are always paise. |
 | **Dates** | `BusinessDate` = `"YYYY-MM-DD"` string in institution TZ for `dueDate`, `paymentDate`, `effectiveDate`, `dob`, `admissionDate`, `startDate`… Timestamps (`createdAt`, `receivedAt`) are UTC `Date`. Strings sort and range-query correctly, avoid TZ drift. |
@@ -54,7 +54,7 @@ Institution {                       // exactly one per deployment (v1)
 
 SystemSetting { key, value, schemaVersion }        // typed by a Zod registry per key
 //  keys: dueSoonDays, allocation.strategy, allocation.componentSplit, advance.enabled,
-//        payment.backdateMaxDays, payment.methods[], reversal.approval{required,thresholdPaise,sameUserAllowed},
+//        payment.backdateMaxDays, payment.methods[], reversal.approval.thresholdPaise (null = off), teacher.allowMultipleDivisions,
 //        adjustment.approval{thresholdPaise}, receipt.numbering{prefix,series,resetPolicy,pad}, id.formats{…},
 //        lateFee.materialize, aging.basis, notification.quietHours, student.customFieldDefs[] …
 //  index: **(institutionId, key)**.   Every change is audited (previous/new).
@@ -197,10 +197,12 @@ FeeAssignment {                         // "this student is billed per this vers
 // **partial unique (studentId, academicYearId) where status:'ACTIVE'**  ← no duplicate fee assignment
 // (structureVersionId) · (academicYearId,classId,divisionId,status)
 
-LateFeePolicy {
-  name, mode: FIXED | DAILY_FIXED | PERCENT | DAILY_PERCENT, valuePaise?, valueBp?,
-  graceDays, capPaise?, appliesToKinds[], scope{academicYearId?,classIds?},
-  effectiveFrom, effectiveTo?, isActive, version                  // BRC-F1
+LateFeePolicy {                        // versioned; a new version never rewrites posted penalties (decision BRC-F1)
+  name, mode: FIXED | PER_DAY | PERCENT, valuePaise?, valueBp?,
+  graceDays (default 0), capPaise? (total penalties per parent receivable),
+  appliesToKinds[] (default ['INSTALLMENT']), applyToOpeningBalance (default false),
+  installmentOverrides?: { [installmentNo]: { mode?, valuePaise?, valueBp?, graceDays?, capPaise? } },
+  scope{academicYearId?,classIds?}, effectiveFrom, effectiveTo?, isActive, version
 }
 ```
 
@@ -214,12 +216,14 @@ Receivable {                            // ONE payable unit (decision D2)
   installmentNo?, label: "Installment 2" | "Opening balance" | "Late fee – Inst. 2",
   dueDate, originalDueDate, dueDateHistory: [{from,to,reason,by,at}],
   parentReceivableId?→ (penalty → the installment it penalises), periodKey? (e.g. "2026-10-15" / "2026-W42"),
-  components: [{ componentId→, code, name, payable, adjusted, paid }],
-  payable, adjusted, paid, pending,      // = Σ components; pending = payable − adjusted − paid  (stored, guarded)
+  components: [{ componentId→, code, name, payable, adjusted, transferred, paid }],
+  payable, adjusted, transferred, paid, pending,   // = Σ components; pending = payable − adjusted − transferred − paid (stored, guarded)
+  // `transferred` = amount moved to a later year by a manual, audited carry-forward (decision BRC-D1); NOT a discount, NOT collected
+  hasPendingAdjustment: boolean,         // drives the PAID vs PENDING_ADJUSTMENT status (decision BRC-I1)
   paymentStatus: UNPAID | PARTIAL | PAID | WAIVED | VOID,
   restructuredFromId?→, restructureSeq?, dedupeKey, voidReason?, version
 }
-// Invariant: payable ≥ 0; adjusted+paid ≤ payable; pending = payable−adjusted−paid ≥ 0  (Mongo validator + engine)
+// Invariant: payable ≥ 0; adjusted+transferred+paid ≤ payable; pending = payable−adjusted−transferred−paid ≥ 0  (Mongo $expr validator + engine)
 // **(institutionId,dedupeKey)** where dedupeKey = `${sourceType}:${sourceId}:${installmentNo ?? 0}:${parentReceivableId ?? ''}:${periodKey ?? ''}`
 //   → no duplicate installment for the same assignment, no duplicate opening-balance receivable, no duplicate penalty for a period
 //   (one plain unique index instead of several partial ones; restructured children get a new `restructureSeq` in the key)
@@ -230,7 +234,8 @@ Receivable {                            // ONE payable unit (decision D2)
 
 OpeningBalance {                        // business record behind kind=OPENING_BALANCE (requirement #3)
   studentId→, academicYearId→, amount (>0), effectiveDate, dueDate (default = effectiveDate),
-  source: MIGRATION | MANUAL | ADMISSION | CARRY_FORWARD(BRC-D1), reason, remarks?, importRef?{batchId,rowNo},
+  source: MIGRATION | MANUAL | ADMISSION | CARRY_FORWARD (manual, audited, never automatic — decision BRC-D1), reason, remarks?, importRef?{batchId,rowNo},
+  carryForwardFrom?: [{ receivableId→, academicYearId→, amount }],
   receivableId→, status: ACTIVE | REVERSED, reversal?{at,by,reason}, createdBy, createdAt
 }
 // **partial unique (studentId, academicYearId) where status:'ACTIVE'**  ← no duplicate opening balance
@@ -261,7 +266,7 @@ Payment {                               // IMMUTABLE fact (only `status` / `reve
   uniqueRefKey?: "UPI|<norm ref>" | "CHQ|<bank>|<no>",   // present only when the method requires uniqueness; UNSET on reversal so a corrected re-entry is possible
   paymentDate (business), receivedAt, collectedBy→User,
   source: COUNTER | HISTORICAL | IMPORT | ADVANCE_ADJUSTMENT,
-  allocationMode: AUTO | MANUAL, remarks?, idempotencyKey,
+  allocationMode: AUTO | MANUAL, allocationStrategy: 'OLDEST_DUE_FIRST'|… (the order actually used), remarks?, idempotencyKey,
   status: POSTED | REVERSED, receiptId→, reversalId?→
 }
 // **(institutionId,paymentNo)** · **(institutionId,idempotencyKey)** · **partial unique (institutionId,uniqueRefKey) where uniqueRefKey exists**
@@ -278,9 +283,11 @@ PaymentAllocation {                     // IMMUTABLE ledger row
 // (paymentId) · (receivableId) · (institutionId,postingDate,classId,divisionId) · (studentId,postingDate)
 // Paid(receivable) = Σ allocation.amount  — the receivable.paid counter is a guarded cache of this sum (reconciled nightly).
 
-PaymentReversal {
-  paymentId→ (unique), reasonCode, reasonText, requestedBy, requestedAt,
-  approvalRequired, approvedBy?, approvedAt?, rejectedBy?, rejectedReason?,
+PaymentReversal {                      // powers the Reversal Report (decision BRC-E6)
+  paymentId→ (unique), reasonCode, reasonText (mandatory), requestedBy, requestedAt,
+  originalPaymentDate, originalAmount, reversalDate, reversedAmount,        // report columns (full reversal in v1 → reversedAmount = originalAmount)
+  approvalRequired (set from settings.reversal.approval.thresholdPaise; null threshold → false),
+  approvedBy?, approvedAt?, rejectedBy?, rejectedReason?, authorizedBy (approver if approval flow, else performing user),
   status: PENDING_APPROVAL | COMPLETED | REJECTED, completedAt?, refund?{mode,reference,by,at}, idempotencyKey
 }
 // **(paymentId)** · (status,requestedAt)
@@ -298,7 +305,7 @@ Receipt {                               // IMMUTABLE snapshot
   pdf?{ fileId, templateVersion, hash }, printCount, lastPrintedAt?,
   cancellation?{ at, by, reason }
 }
-// **(institutionId,series,receiptNo)** · **(paymentId)** · (studentId,issuedAt)
+// **(institutionId,receiptNo)** (never reused) · **(paymentId)** · (studentId,issuedAt)    // receiptNo e.g. "REC-2026-000001"; users can never supply it
 ```
 
 ### H. Derived read models
@@ -431,11 +438,11 @@ Institution 1──* AcademicYear 1──* Division *──1 Class
 | I4 | A (structure slot) = unique (year, class, division?, category?) | unique index |
 | I5 | **≤ 1 ACTIVE opening balance per student-year**; creating it creates exactly 1 receivable, and **does not change `grossFee`** | unique index + engine test |
 | I6 | A published fee version is immutable | repository (no update path) + tests |
-| I7 | `receivable.pending = payable − adjusted − paid ≥ 0` | guarded `$inc` + validator + nightly reconcile |
+| I7 | `receivable.pending = payable − adjusted − transferred − paid ≥ 0` | guarded `$inc` + `$expr` validator + nightly reconcile |
 | I8 | `Σ allocations(payment) + unallocated = payment.amount` | engine + service test |
 | I9 | `Σ allocations(receivable) = receivable.paid` | nightly reconciliation job (alerts on drift) |
 | I10 | A payment is reversed **at most once**; reversal restores every touched receivable exactly | unique `payment_reversals.paymentId` + property test |
-| I11 | Receipt number unique & gap-free per series; one receipt per payment | counter in txn + unique indexes |
+| I11 | Receipt number unique and never reused (gaps allowed); one receipt per payment | counter + unique indexes |
 | I12 | Duplicate payment (same idempotency key / same unique reference) impossible | unique indexes |
 | I13 | `student.current` equals the current-year `isCurrent` enrollment | enrollment service txn + rebuild job + test |
 | I14 | Fee changes in year Y never alter documents of year Y−1 | version immutability + assignments snapshot; regression test |

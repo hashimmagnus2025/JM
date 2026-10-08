@@ -92,6 +92,8 @@
 
 ## 21. Business Rules Requiring Confirmation
 
+> **Status update (v0.2):** rules marked ✅ below were **decided by the client** and are recorded in [11-business-rule-decisions.md](11-business-rule-decisions.md) — that register is authoritative. Rules not marked remain open with the stated proposed default.
+>
 > **BUSINESS RULE REQUIRES CONFIRMATION.** Each item states what is unclear, why it matters, the options, and the **proposed default** the engine will implement *behind a setting* until confirmed. None of these is silently hard-coded.
 
 ### A · Institution & structure
@@ -107,7 +109,7 @@
 **BRC-B3 · Student exit** — TC/withdrawal/transfer: what happens to future unbilled installments and unpaid dues? *Options:* keep all / void future unpaid installments with approval / pro-rate. *Proposed:* keep past dues; future installments voided only via approved action.
 **BRC-B4 · Mid-year admission** — Pro-rating? Installments already past due on admission date: generate as overdue, consolidate into next, or waive. *Proposed:* generate full structure; consolidation optional setting; no pro-rating.
 **BRC-B5 · Promotion rules** — Detained/repeat handling, dues-blocking (allow/warn/block), auto-fee assignment for the new year, class-teacher carry-over, roll-number reset. *Proposed:* warn on dues; auto-assign fees on; teachers assigned separately.
-**BRC-B6 · Teacher rules** — May a teacher be class teacher of >1 division in a year? Subject teachers needed? Do teachers log in (scope = own division)? Teacher-wise reports attribute to teacher **today** or **as of each date**? *Proposed:* one division per teacher per year (setting); class teacher only; logins optional; attribute as-of **today**.
+✅ **BRC-B6 · Teacher rules — DECIDED (see 11):** multiple divisions per teacher **allowed** (setting); one active class teacher per division-year; no teacher logins in release 1; historical views show the teacher of that period. *(CL-14: historical resolution as-of year end.)*
 
 ### C · Fee structure & installments
 
@@ -119,26 +121,26 @@
 
 ### D · Opening balance & carry-forward
 
-**BRC-D1 · Prior-year dues** — **Model A (aggregate; proposed)** vs **Model B (carry-forward posting)** (§8.3). Also: one opening balance per student per year (**proposed**) or multiple; opening balance **due date** & aging base (**proposed: effective date**); may opening balance be waived/discounted (needs approval) and can it attract late fee? *Matters most: double-counting, aging, reporting.*
+✅ **BRC-D1 · Prior-year dues — DECIDED (see 11):** **keep unpaid dues in their original academic year** (no automatic carry-forward); carry-forward only as a manual, audited operation. *(CL-12.)* Still open: whether more than one opening balance per student-year is needed (default one) and waiver/late-fee on opening balance (default no late fee).
 **BRC-D2 · Existing payments at admission/migration** — Imported/entered as itemised historical payments (**proposed**) or as a lump "paid to date"? Do they get new receipt numbers or keep the legacy number? Which dues do they settle (engine order vs explicit mapping)?
 
 ### E · Payments
 
-**BRC-E1 · Allocation rules** — Default order (**proposed: oldest due first; opening balance → penalty → installment**), alternatives (penalty first, current first), and component split inside an installment (**pro-rata** vs priority list). *Matters:* every outstanding number by fee type.
+✅ **BRC-E1 · Allocation rules — DECIDED (see 11):** oldest due first (overdue → opening balance → penalty → installments); inside a receivable by configured component priority; configurable later. *(CL-01, CL-02.)*
 **BRC-E2 · Advance payments & refunds** — Allowed at all? Auto-apply to next fees? Refund process (cheque/bank), approval, receipt/credit-note handling. *Proposed:* disabled until confirmed; no refunds in v1.
 **BRC-E3 · Overpayment** — Reject (**proposed when advance off**) vs convert to advance.
 **BRC-E4 · Payment methods & cheque lifecycle** — Method list; is a cheque "paid" on receipt or on clearance (post-dated, bounce, bounce charges)? Reference uniqueness per method? *Proposed:* cheque counts on receipt, reversible on bounce; UPI/bank/card references must be unique.
 **BRC-E5 · Back-dating & period lock** — Max back-date days; month-end/day-end closing (cash book lock). *Proposed:* 7 days with permission; no day-closing in v1.
-**BRC-E6 · Reversal rules** — Who may reverse; time window; approval (maker-checker) and threshold; refund handling; effect on reports (show reversal on **reversal date** — proposed — vs remove from the original date); retro late-fee recalculation. *Proposed:* approval required above ₹X (set by client), different approver, reversal-date reporting, no retro penalties.
+✅ **BRC-E6 · Reversal rules — DECIDED (see 11):** finance/admin by permission only; mandatory reason; audit; compensating entries; receipt number kept & cancelled; optional approval via a **configurable threshold (default off)**; reversal report columns fixed. *(CL-06, CL-07.)* Still open: reversal time window; refunds.
 
 ### F · Late fees & discounts
 
-**BRC-F1 · Late-fee policy** — Type (fixed / per-day / % / per-installment), grace days, cap, base (installment pending vs payable), apply to opening balance?, compounding, waivable (by whom), **materialised at posting time (proposed)** vs computed on the fly, exclusion for students on concession. *Matters:* every overdue figure and receipt.
+✅ **BRC-F1 · Late-fee policy — DECIDED (see 11):** fixed / per-day / percentage / installment-specific, grace (default 0), cap, posted as separate receivables, not on opening balance unless configured, history never rewritten. *(CL-03, CL-04, CL-05.)*
 **BRC-F2 · Discount/concession/scholarship** — Definitions of the five types; flat vs %; applied to total or per component; distribution across installments (**proposed: latest-first** for concessions, proportional for scholarships); stacking; multi-year scholarships; approval hierarchy & thresholds; may a collector request; are discounts allowed after payment.
 
 ### G · Receipts
 
-**BRC-G1 · Receipt numbering & format** — Prefix, series per year/counter/collector, reset policy, gap-free requirement (**proposed: gap-free per academic-year series**), cancelled-receipt numbering, credit note on reversal?, copy marking, printer type (A4/A5/80 mm thermal), language/script, GST/tax lines (education usually exempt — confirm none), signature/stamp image.
+✅ **BRC-G1 · Receipt numbering — DECIDED (see 11):** `REC-2026-000001`, unique, never reused, **gaps allowed**, prefix/scope configurable. *(CL-08.)* Still open: printer type (A4/A5/80 mm), language/script, tax lines, signature image, credit-note-on-reversal.
 
 ### H · Communication
 
@@ -149,8 +151,8 @@
 
 ### I · Reporting, dashboard
 
-**BRC-I1 · Status vocabulary** — Meaning of **Paid vs Fully Settled** and **Unpaid vs Pending**; **Due Soon window** (days; **proposed 7**); dashboard buckets exclusive (SOW §30 sums to total) vs overlay (**proposed**).
-**BRC-I2 · Metric definitions** — Does **Expected Fees** include opening balance (**proposed: separate line; Total Receivable includes it**); **Collection %** denominator (Net Receivable vs due-to-date); aging buckets: **0–30 means 1–30 days overdue** with a separate *Not yet due* (**proposed**); aging as-of date.
+✅ **BRC-I1 · Status vocabulary — DECIDED (see 11):** Paid / Fully Settled definitions; Due Soon default 7 days (configurable). *(CL-09.)* Still open: overlay vs exclusive dashboard buckets (default overlay).
+✅ **BRC-I2 · Metric definitions — DECIDED (see 11):** Expected excludes opening balance; Collection % = Collected ÷ Expected; aging from original due date with 0–30/31–60/61–90/90+. *(CL-10, CL-11.)*
 **BRC-I3 · Collection targets** — Who sets them; granularity (month/quarter/year/class/division); are targets on *collections* (cash in) or on *dues falling in the period*.
 **BRC-I4 · Forecast method** — Choose among schedule-based (**proposed**) / run-rate / client-specified formula.
 **BRC-I5 · "Active student"** — For dashboard (§27: active vs inactive/passed-out), reporting by selected year (enrolled in year) and **billing** (BRC-K1).
@@ -164,7 +166,7 @@
 
 ### K · Commercial / scope
 
-**BRC-K1 · "Active student" for the ₹120/student/year charge** — Enrolled in the current year? Any non-archived? Counted at go-live or yearly snapshot? (Needs a billing-count report either way.) Also confirm: **timeline/scope** vs the 45–60-day estimate (§16.0), and that third-party costs (SMS/WhatsApp/email/storage/Sentry) are client-borne.
+✅ **BRC-K1 · Active student / ₹120 — DECIDED (see 11):** configurable, unique active students, separate from the fee engine. *(CL-13.)* Still open: timeline/scope vs the 45–60-day estimate and who bears third-party costs.
 
 ---
 
@@ -173,4 +175,4 @@
 2. Until answered, the **proposed default** is implemented behind its setting with an **engine test per option**; the UI shows the configured behaviour in plain language.
 3. Items that change *stored* shape (D1 Model A/B, F1 materialisation, E6 effective dating) are decided **before Phase 9–11 complete**; everything else can change late with no migration.
 
-**Highest-impact to answer first:** D1 (carry-forward), E1 (allocation order), F1 (late fees), E6 (reversal approval & reporting), G1 (receipt numbering), I1/I2 (status & metric definitions), B6 (teacher rules), K1 (scope/timeline).
+**Highest-impact still open:** the `CL-nn` confirmations in [11](11-business-rule-decisions.md), then E2–E5 (advance/over-payment, cheque lifecycle, back-dating), F2 (discount policy), D2 (migrated payments & receipts), C1/C3 (fee-structure precedence & re-pricing), H1 (reminder providers/templates).

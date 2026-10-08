@@ -60,6 +60,7 @@ Every SOW section (§1–§56) and the three client additions map to a design el
 | 55 | 40 confirmation points | Answered by design or listed in §21 (BRC) | pre-1 |
 | 56 | Final vision, visibility at every level | Institution→Class→Division→Student→Installment→Payment drill-down | 15 |
 | p.28 | Commercial summary (₹50k, 45–60 d, VPS ₹6k/mo, ₹120/student/yr) | Deployment §1.6, scope risk §16.0, BRC-K1 | — |
+| §21 | Open business rules | Final client decisions for D1, E1, F1, E6, G1, I1/I2, B6, K1 → [11-business-rule-decisions.md](11-business-rule-decisions.md) | 1 |
 
 ## Client additions
 

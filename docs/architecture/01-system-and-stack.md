@@ -62,7 +62,7 @@ Nginx → requestId (AsyncLocalStorage) → pino-http → helmet/CORS → body l
 | **controllers** | services (own module), DTO mappers | touch models, start transactions |
 | **services** | own repositories, **other modules' public service interfaces**, `domain/finance`, `domain/academic`, providers via ports | import another module's models/repositories |
 | **repositories** | Mongoose models of the *own* module | business rules |
-| **domain/finance** | *nothing* (pure TS: money, dates, types) | import mongoose, express, redis, fs, `Date.now()` (use injected `Clock`) |
+| **domain/finance** | only pure utilities from `@sfm/shared` (money, business dates, canonical JSON) and itself | import mongoose, express, redis, fs, `node:crypto`, `Date.now()` (use injected `Clock`); `domain/billing` and `domain/finance` may not import each other |
 | **jobs/workers** | services | duplicate service logic |
 
 Implemented with `eslint-plugin-boundaries` + `no-restricted-imports`; CI fails on violation.
@@ -114,7 +114,7 @@ External: Sentry (SaaS), uptime monitor, WhatsApp/SMS/Email providers.
 
 | Layer | Technology | Why it earns its place | Guardrail |
 |---|---|---|---|
-| Runtime | **Node.js LTS (24.x)** + TypeScript `strict` | One language across web/api/shared schemas. | `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` on. |
+| Runtime | **Node.js 22 LTS** (≥ 22; runs unchanged on 24) + TypeScript `strict` | One language across web/api/shared schemas. | `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` on. |
 | API | **Express 5** | Native async error propagation; mature middleware ecosystem. | Thin controllers; no logic in routes. |
 | DB | **MongoDB 8 + Mongoose** | Requested. Transactions, aggregation, partial/compound indexes cover every need. | Replica set always (even local). DTO ≠ persistence schema. |
 | Validation | **Zod** (shared package) | One schema → backend validation, frontend forms (RHF resolver), OpenAPI. | Strict objects (reject unknown keys → no mass-assignment). |
@@ -155,7 +155,7 @@ External: Sentry (SaaS), uptime monitor, WhatsApp/SMS/Email providers.
 
 | Addition | Problem it solves |
 |---|---|
-| **pnpm workspaces + Turborepo** | `packages/shared` (Zod schemas, enums, permission keys, money formatting) consumed by web+api; cached CI. |
+| **pnpm workspaces** (Turborepo deferred until the build graph needs caching) | `packages/shared` (money, business dates, canonical JSON, enums; later Zod DTOs/permission keys) consumed by api (and web later). |
 | **fast-check** | Property tests: Σ(installments)=total, allocation conservation, reversal restores state. |
 | **mongodb-memory-server (replica set)** | Real transactions in unit/integration tests without Docker. |
 | **eslint-plugin-boundaries** | Enforces §1.4 automatically. |

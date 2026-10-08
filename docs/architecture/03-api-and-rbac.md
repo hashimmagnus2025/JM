@@ -155,7 +155,7 @@ import.run · import.commit
 
 ### 6.3 Role matrix (system roles; all editable via custom roles)
 
-Legend: ● full · ◐ limited (see note) · ○ view only · — none. **Scope:** `ALL` except Class Teacher = `OWN_DIVISIONS`.
+Legend: ● full · ◐ limited (see note) · ○ view only · — none. **Scope:** `ALL` for every release-1 role. *Class Teacher* and the `OWN_DIVISIONS` scope are designed but **not enabled in release 1** — teachers do not log in (decision BRC-B6).
 
 | Capability | Super Admin | Admin / Principal | Accountant | Fee Collector | Registrar | Class Teacher | Comms Officer | Auditor |
 |---|---|---|---|---|---|---|---|---|
@@ -199,7 +199,7 @@ Legend: ● full · ◐ limited (see note) · ○ view only · — none. **Scope
 |---|---|
 | **Collect payment** | `payment.collect`; amount ≤ pending unless `advance.enabled`; unique reference rule; `Idempotency-Key`; audit; daily collector totals visible to the collector (day-book). |
 | **Back-dated payment** | `payment.backdate` and `paymentDate ≥ today − payment.backdateMaxDays`; closed academic year needs `academicYear.override`; always flagged on the receipt/report. |
-| **Reverse payment** | Request needs `payment.reverse` + mandatory reason code/text. If `reversal.approval.required` (default **on** above a threshold) the reversal stays `PENDING_APPROVAL` until a *different* user with `payment.reverseApprove` approves (`sameUserAllowed=false`). Receipt is cancelled, number retained. |
+| **Reverse payment** | Needs `payment.reverse` (**not** granted to Fee Collector) + mandatory reason code/text. Second-level approval is **optional and threshold-driven**: `reversal.approval.thresholdPaise` (system setting, **unset by default = no approval step**; no amount is hard-coded). When set, payments ≥ threshold stay `PENDING_APPROVAL` until a *different* user with `payment.reverseApprove` approves. Receipt is cancelled, number retained. Reversal report: original date/amount, reversal date/amount, reason, authorized by. |
 | **Discount / waiver** | Request needs `adjustment.create`; applied only after `adjustment.approve` (requester ≠ approver) or auto-approved below a configured threshold. |
 | **Opening balance** | `openingBalance.create`; reason mandatory; reversal needs `openingBalance.reverse`. |
 | **Fee structure publish** | Separate from edit; diff view shown; reason required; affects only *new* assignments unless a BRC-C3 re-pricing job is explicitly approved. |

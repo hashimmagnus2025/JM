@@ -1,6 +1,6 @@
 # Student Fee Management, Collection & Receivables Platform — Architecture Baseline
 
-**Status:** v0.1 — design for review. **No implementation code exists yet.**
+**Status:** v0.2 — design baseline **plus final business-rule decisions** ([11-business-rule-decisions.md](11-business-rule-decisions.md)). Phase 0 (foundation) and Phase 1 (finance core) are implemented; later phases are design-only.
 **Primary source of truth:** `Student_Fee_Management_System_SOW_1.pdf` (28 pages, 56 sections + one stray commercial page).
 **Additional client requirements:** Teacher management, Smart student addition, Opening balance (all incorporated).
 
@@ -32,6 +32,7 @@
 | 20 | Edge Cases | [09-edge-cases-and-open-rules.md](09-edge-cases-and-open-rules.md) §20 |
 | 21 | Business Rules Requiring Confirmation | [09-edge-cases-and-open-rules.md](09-edge-cases-and-open-rules.md) §21 |
 | — | SOW §1–§56 → design traceability | [10-sow-traceability.md](10-sow-traceability.md) |
+| — | **Final business-rule decisions (supersede baseline defaults)** | [11-business-rule-decisions.md](11-business-rule-decisions.md) |
 
 ---
 
@@ -75,4 +76,4 @@ A multi-year **receivables system for schools**: every rupee a student owes (fee
 
 ## 0.5 Next step
 
-Review §21 (the open rules). I can proceed with Phase 1 immediately using the proposed defaults — they are isolated behind settings — but anything touching **allocation order, carry-forward, late fees, reversal approval and receipt numbering** should be confirmed before Phases 9–12 are finished.
+Final decisions for **BRC-D1, E1, F1, E6, G1, I1/I2, B6, K1** are recorded in [11](11-business-rule-decisions.md) and implemented in the Phase 1 finance engine. The remaining open rules (§21) stay behind settings with the baseline defaults; the `CL-nn` clarifications in [11 §11.4](11-business-rule-decisions.md) need a yes/no from the client. Phase 0/1 status and verification results: [12-phase-0-1-status.md](12-phase-0-1-status.md).

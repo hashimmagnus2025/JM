@@ -67,7 +67,7 @@ Composer (audience → message → schedule → review) · Rules (list + editor 
 
 | Widget (SOW §27–§35 + brief) | Source | Cache |
 |---|---|---|
-| KPI strip: Students, Classes, Divisions, Teachers, Expected, Collected, Outstanding, Overdue, Collection % | `student_year_balances` ⨝ enrollments (counts) + receivables (overdue) | 60 s, version-keyed |
+| KPI strip: Students, Classes, Divisions, Teachers, **Expected Fees (opening balance excluded)**, Collected, Outstanding, Overdue, **Collection % = Collected ÷ Expected** (definitions: [11 §11.3](11-business-rule-decisions.md)); opening balance shown as its own tile | `student_year_balances` ⨝ enrollments (counts) + receivables (overdue) | 60 s, version-keyed |
 | Today / Month / Year collection, Upcoming due, Overdue amount | `payment_allocations` by `postingDate` · receivables due window | 30–60 s |
 | **Collection trend** (day/week/month) | allocations grouped by `postingDate` | 5 min |
 | **Expected vs Actual** (by month / by class) | receivables `payable−adjusted` by due month vs allocations | 5 min |

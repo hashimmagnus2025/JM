@@ -19,7 +19,7 @@ AcademicYear 1──* Division(class, name) 1──* TeacherAssignment *──1 
 |---|---|
 | **Add / Edit Teacher** | `teacherCode` from counter; `staffId` unique; edits audited (before/after). |
 | **Activate / Deactivate** | `status` ACTIVE↔INACTIVE (LEFT with `leavingDate`). **Deactivating a teacher who holds a current assignment is blocked** with a clear message (*"Rahul Sharma is class teacher of 6-B (2026-27). Reassign first."*) or offered as "Deactivate and choose replacement" which performs a Change in the same transaction. |
-| **Assign** | Division must belong to the year; teacher must be ACTIVE; no current CLASS_TEACHER on that division (else use *Change*); `effectiveFrom` within the year (default: year start or today); one-class-per-teacher-per-year soft rule from settings (**BRC-B6**). Inserts row `isCurrent=true`. |
+| **Assign** | Division must belong to the year; teacher must be ACTIVE; no current CLASS_TEACHER on that division (else use *Change*); `effectiveFrom` within the year (default: year start or today). **A teacher may hold several divisions in the same year** (setting `teacher.allowMultipleDivisions`, default **true** — decision BRC-B6); when the setting is false a second current assignment for that teacher/year is rejected. Inserts row `isCurrent=true`. |
 | **Change teacher** | In one txn: close current row (`effectiveTo = newFrom − 1 day`, `isCurrent=false`, `endReason=CHANGED`), insert new row (`replacesAssignmentId`), reason mandatory. **The old row is never edited otherwise or deleted.** |
 | **End assignment** | e.g. teacher left: close, leave division temporarily unassigned (dashboard shows an "Unassigned divisions" alert). |
 | **Year roll-over** | `clone-structure` offers "copy last year's class teachers as *proposed* assignments" — they are created as normal rows only after confirmation. A teacher moving 5-A → 6-B is simply a new row in the new year; 2025-26's row stays. |
@@ -41,11 +41,11 @@ AcademicYear 1──* Division(class, name) 1──* TeacherAssignment *──1 
 | Teacher-wise students | assignments `(teacherId, year, current or as-of)` → `divisionIds` → `student_enrollments (divisionId in …, isCurrent)` → students (paged) |
 | Teacher-wise class/division | assignments by teacher, joined to class/division lookup maps (cached) |
 | Teacher-wise student distribution (dashboard) | count enrollments per division (aggregation) → map division→teacher in the service (≤ ~100 divisions; no `$lookup` needed) |
-| Teacher-wise outstanding/collection | aggregate receivables **by division** (indexed) → attribute to the teacher effective on `asOf` (default today). **BRC-B6:** attribute to teacher *as of today* (proposed) or *as of each due/payment date*. |
+| Teacher-wise outstanding/collection | aggregate receivables **by division** (indexed) → attribute to the teacher effective on `asOf`: **today for the current year; the academic year's end date for past years; if the teacher changed during the period, show every teacher with their date ranges** (decision BRC-B6, CL-14). |
 | Assignment history | by division or by teacher, sorted by `effectiveFrom` |
 
 ### 9.5 Class-teacher login & data scope
-Optional: a `User` linked to a `Teacher` with role *Class Teacher* gets `dataScope=OWN_DIVISIONS`. The scope resolver loads their **current** assignments (cached, invalidated on assignment change) and the repository injects `{ divisionId: {$in: …} }` into student/enrollment/receivable/outstanding queries. They see fee status of *their* students (mobile-friendly "My class" view) and, if permitted, send reminders to them — nothing else. (**BRC-B6** to confirm teacher logins exist at all.)
+**Not in release 1** (decision BRC-B6: teachers do not log in). The model keeps `User.teacherId` and the `OWN_DIVISIONS` scope so a later release can add class-teacher logins without schema change. Design when enabled: the scope resolver loads the user's **current** assignments and the repository injects `{ divisionId: {$in: …} }` into student/enrollment/receivable queries.
 
 ### 9.6 UI
 Teachers list (filters: status, assigned/unassigned, year) · Teacher profile (tabs: Overview · Assignments history timeline · Students (current year) · Audit) · **Assignment board**: grid of Class × Division for the selected year with teacher chips, drag-free (accessible) "Assign / Change" drawer, unassigned divisions highlighted · Division detail shows teacher + history.
