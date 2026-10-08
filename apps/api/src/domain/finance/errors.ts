@@ -21,6 +21,10 @@ export type FinanceErrorCode =
   | 'REVERSAL_APPROVER_INVALID'
   | 'RECEIPT_NUMBER_INVALID'
   | 'IDEMPOTENCY_KEY_REUSED'
+  | 'DUPLICATE_TRANSACTION_REF'
+  | 'REVERSAL_APPROVAL_REQUIRED'
+  | 'PAYMENT_NOT_FOUND'
+  | 'CONCURRENCY_CONFLICT'
   | 'INVARIANT_VIOLATION';
 
 /** Domain rule violation. Services map these to HTTP 422 with the same stable `code`. */

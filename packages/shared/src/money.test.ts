@@ -109,7 +109,9 @@ describe('splitProportional (largest remainder)', () => {
 describe('even splits', () => {
   it('last absorbs the remainder (BRC-C4 default)', () => {
     expect(splitEvenRemainderLast(100, 3)).toEqual([33, 33, 34]);
-    expect(splitEvenRemainderLast(5_000_000, 4)).toEqual([1_250_000, 1_250_000, 1_250_000, 1_250_000]);
+    expect(splitEvenRemainderLast(5_000_000, 4)).toEqual([
+      1_250_000, 1_250_000, 1_250_000, 1_250_000,
+    ]);
     expect(splitEvenRemainderLast(0, 3)).toEqual([0, 0, 0]);
     expect(splitEvenRemainderLast(7, 1)).toEqual([7]);
   });
@@ -123,12 +125,16 @@ describe('even splits', () => {
   });
   it('PROPERTY: sums to total', () => {
     fc.assert(
-      fc.property(fc.integer({ min: 0, max: 1_000_000_000 }), fc.integer({ min: 1, max: 24 }), (t, n) => {
-        for (const parts of [splitEvenRemainderLast(t, n), splitEvenRemainderFirst(t, n)]) {
-          expect(parts).toHaveLength(n);
-          expect(parts.reduce((s, p) => s + p, 0)).toBe(t);
-        }
-      }),
+      fc.property(
+        fc.integer({ min: 0, max: 1_000_000_000 }),
+        fc.integer({ min: 1, max: 24 }),
+        (t, n) => {
+          for (const parts of [splitEvenRemainderLast(t, n), splitEvenRemainderFirst(t, n)]) {
+            expect(parts).toHaveLength(n);
+            expect(parts.reduce((s, p) => s + p, 0)).toBe(t);
+          }
+        },
+      ),
     );
   });
 });

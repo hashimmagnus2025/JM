@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+# Multi-stage, non-root, production image for the API and the worker (same image, different command).
+
+FROM node:22-alpine AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
+WORKDIR /repo
+
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --filter @sfm/api...
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY apps/api apps/api
+RUN pnpm --filter @sfm/api build \
+ && pnpm --filter @sfm/api --prod deploy --legacy /out   # /out already contains the freshly built dist/
+
+FROM node:22-alpine AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+RUN addgroup -S app && adduser -S app -G app
+COPY --from=build --chown=app:app /out/node_modules ./node_modules
+COPY --from=build --chown=app:app /out/dist ./dist
+COPY --from=build --chown=app:app /out/package.json ./package.json
+USER app
+EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s CMD wget -qO- http://127.0.0.1:4000/healthz || exit 1
+CMD ["node", "dist/server.js"]
+# worker:   command: ["node", "dist/worker.js"]

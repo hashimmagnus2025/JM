@@ -2,6 +2,7 @@
   "name": "sfm",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "description": "Student Fee Management, Collection & Receivables Platform",
   "packageManager": "pnpm@10.28.0",
   "engines": {

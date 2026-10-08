@@ -68,24 +68,38 @@ export function validateLateFeeRule(rule: LateFeeRule): void {
   const bad = (m: string): never => {
     throw new FinanceError('LATE_FEE_POLICY_INVALID', m);
   };
-  if (!Number.isInteger(rule.graceDays) || rule.graceDays < 0 || rule.graceDays > 3650) bad('grace days must be a whole number between 0 and 3650');
-  if (rule.capPaise != null && (!Number.isSafeInteger(rule.capPaise) || rule.capPaise <= 0)) bad('the penalty cap must be greater than zero');
+  if (!Number.isInteger(rule.graceDays) || rule.graceDays < 0 || rule.graceDays > 3650)
+    bad('grace days must be a whole number between 0 and 3650');
+  if (
+    rule.capPaise !== null &&
+    rule.capPaise !== undefined &&
+    (!Number.isSafeInteger(rule.capPaise) || rule.capPaise <= 0)
+  )
+    bad('the penalty cap must be greater than zero');
   if (rule.mode === 'PERCENT') {
-    if (!Number.isInteger(rule.valueBp) || (rule.valueBp ?? 0) < 1 || (rule.valueBp ?? 0) > 10_000) bad('percentage must be between 0.01 % and 100 %');
+    if (!Number.isInteger(rule.valueBp) || (rule.valueBp ?? 0) < 1 || (rule.valueBp ?? 0) > 10_000)
+      bad('percentage must be between 0.01 % and 100 %');
   } else if (!Number.isSafeInteger(rule.valuePaise) || (rule.valuePaise ?? 0) <= 0) {
     bad('penalty amount must be greater than zero');
   }
 }
 
 const effectiveRule = (policy: LateFeePolicy, parent: Receivable): LateFeeRule => {
-  const override = parent.installmentNo !== undefined ? policy.installmentOverrides?.[parent.installmentNo] : undefined;
+  const override =
+    parent.installmentNo !== undefined
+      ? policy.installmentOverrides?.[parent.installmentNo]
+      : undefined;
   const merged: LateFeeRule = { ...policy, ...(override ?? {}) };
   validateLateFeeRule(merged);
   return merged;
 };
 
 /** pending of the parent on the END of `day`, reconstructed from the allocations posted up to then */
-export function pendingOnDay(parent: Receivable, paidEvents: readonly PaidEvent[], day: BusinessDate): Paise {
+export function pendingOnDay(
+  parent: Receivable,
+  paidEvents: readonly PaidEvent[],
+  day: BusinessDate,
+): Paise {
   const paid = paidEvents.filter((e) => !isAfter(e.date, day)).reduce((s, e) => s + e.amount, 0);
   return Math.max(0, parent.payable - parent.adjusted - parent.transferred - paid);
 }
@@ -106,7 +120,12 @@ export interface ComputePenaltyInput {
 export function computePenaltyPostings(input: ComputePenaltyInput): PenaltyPosting[] {
   const { parent, policy, asOf } = input;
   if (parent.kind === 'PENALTY' || parent.paymentStatus === 'VOID') return [];
-  if (parent.kind === 'OPENING_BALANCE' ? !policy.applyToOpeningBalance : !policy.appliesToKinds.includes(parent.kind)) return [];
+  if (
+    parent.kind === 'OPENING_BALANCE'
+      ? !policy.applyToOpeningBalance
+      : !policy.appliesToKinds.includes(parent.kind)
+  )
+    return [];
 
   const rule = effectiveRule(policy, parent);
   const firstPenaltyDay = addDays(parent.dueDate, rule.graceDays + 1);
@@ -115,7 +134,10 @@ export function computePenaltyPostings(input: ComputePenaltyInput): PenaltyPosti
   if (isAfter(windowStart, windowEnd)) return [];
 
   const have = new Set(input.existing.map((e) => e.periodKey));
-  let capLeft = rule.capPaise == null ? Number.POSITIVE_INFINITY : rule.capPaise - input.existing.reduce((s, e) => s + e.amount, 0);
+  let capLeft =
+    rule.capPaise === null || rule.capPaise === undefined
+      ? Number.POSITIVE_INFINITY
+      : rule.capPaise - input.existing.reduce((s, e) => s + e.amount, 0);
   const out: PenaltyPosting[] = [];
   const push = (periodKey: string, accrualDate: BusinessDate, amount: Paise): void => {
     if (have.has(periodKey) || amount <= 0 || capLeft <= 0) return;
@@ -133,10 +155,15 @@ export function computePenaltyPostings(input: ComputePenaltyInput): PenaltyPosti
 
   if (rule.mode === 'FIXED' || rule.mode === 'PERCENT') {
     // one-time penalties are triggered on the first penalty day; a policy that starts later never penalises retroactively
-    if (isBefore(firstPenaltyDay, policy.effectiveFrom) || isAfter(firstPenaltyDay, windowEnd)) return [];
+    if (isBefore(firstPenaltyDay, policy.effectiveFrom) || isAfter(firstPenaltyDay, windowEnd))
+      return [];
     const base = pendingOnDay(parent, input.paidEvents, firstPenaltyDay);
     if (base === 0) return [];
-    push('ONCE', firstPenaltyDay, rule.mode === 'FIXED' ? (rule.valuePaise ?? 0) : percentBp(base, rule.valueBp ?? 0));
+    push(
+      'ONCE',
+      firstPenaltyDay,
+      rule.mode === 'FIXED' ? (rule.valuePaise ?? 0) : percentBp(base, rule.valueBp ?? 0),
+    );
     return out;
   }
 
@@ -147,7 +174,8 @@ export function computePenaltyPostings(input: ComputePenaltyInput): PenaltyPosti
   return out;
 }
 
-export const penaltyDedupeKey = (parentId: string, periodKey: string): string => `PENALTY:${parentId}:${periodKey}`;
+export const penaltyDedupeKey = (parentId: string, periodKey: string): string =>
+  `PENALTY:${parentId}:${periodKey}`;
 
 /** Turn a posting into a separate PENALTY receivable (history from this moment on). */
 export function buildPenaltyReceivable(

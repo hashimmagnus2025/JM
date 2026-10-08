@@ -6,7 +6,8 @@ import type { Receivable } from './types';
 
 export type AdjustmentMode = 'FIXED' | 'PERCENT_BP';
 export type AdjustmentBasis = 'TOTAL_FEE' | 'COMPONENT' | 'RECEIVABLE';
-export type AdjustmentDistribution = 'PROPORTIONAL' | 'EARLIEST_FIRST' | 'LATEST_FIRST' | 'SPECIFIC';
+export type AdjustmentDistribution =
+  'PROPORTIONAL' | 'EARLIEST_FIRST' | 'LATEST_FIRST' | 'SPECIFIC';
 
 export interface AdjustmentApplication {
   receivableId: string;
@@ -40,12 +41,17 @@ interface Cell {
 }
 
 const byDue = (a: Receivable, b: Receivable): number =>
-  a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : (a.installmentNo ?? 0) - (b.installmentNo ?? 0) || (a.id < b.id ? -1 : 1);
+  a.dueDate < b.dueDate
+    ? -1
+    : a.dueDate > b.dueDate
+      ? 1
+      : (a.installmentNo ?? 0) - (b.installmentNo ?? 0) || (a.id < b.id ? -1 : 1);
 
 function buildCells(req: AdjustmentRequest, receivables: readonly Receivable[]): Cell[] {
   let scope: Receivable[];
   if (req.basis === 'RECEIVABLE') {
-    if (!req.receivableId) throw new FinanceError('ADJUSTMENT_INVALID', 'receivableId is required for basis RECEIVABLE');
+    if (!req.receivableId)
+      throw new FinanceError('ADJUSTMENT_INVALID', 'receivableId is required for basis RECEIVABLE');
     scope = receivables.filter((r) => r.id === req.receivableId && r.paymentStatus !== 'VOID');
   } else {
     // discounts/concessions apply to FEE receivables only (never to opening balance / penalties)
@@ -76,31 +82,46 @@ function buildCells(req: AdjustmentRequest, receivables: readonly Receivable[]):
  * applications. Σ applications = amount, no application exceeds what is still pending
  * (an adjustment can never reduce a receivable below what has already been paid — that would be a refund).
  */
-export function resolveAdjustment(req: AdjustmentRequest, receivables: readonly Receivable[]): ResolvedAdjustment {
+export function resolveAdjustment(
+  req: AdjustmentRequest,
+  receivables: readonly Receivable[],
+): ResolvedAdjustment {
   if (req.distribution === 'SPECIFIC') {
     const apps = req.specific ?? [];
-    if (apps.length === 0) throw new FinanceError('ADJUSTMENT_INVALID', 'SPECIFIC distribution needs applications');
+    if (apps.length === 0)
+      throw new FinanceError('ADJUSTMENT_INVALID', 'SPECIFIC distribution needs applications');
     const used = new Map<string, number>();
     const byId = new Map(receivables.map((r) => [r.id, r]));
     for (const a of apps) {
       if (!Number.isSafeInteger(a.amount) || a.amount <= 0) {
-        throw new FinanceError('ADJUSTMENT_AMOUNT_INVALID', 'adjustment amounts must be positive whole paise');
+        throw new FinanceError(
+          'ADJUSTMENT_AMOUNT_INVALID',
+          'adjustment amounts must be positive whole paise',
+        );
       }
       const r = byId.get(a.receivableId);
       const c = r?.components.find((x) => x.code === a.componentCode);
       if (!r || !c || r.paymentStatus === 'VOID') {
-        throw new FinanceError('ADJUSTMENT_INVALID', 'adjustment targets an unknown receivable/component', {
-          receivableId: a.receivableId,
-          componentCode: a.componentCode,
-        });
+        throw new FinanceError(
+          'ADJUSTMENT_INVALID',
+          'adjustment targets an unknown receivable/component',
+          {
+            receivableId: a.receivableId,
+            componentCode: a.componentCode,
+          },
+        );
       }
       const key = `${a.receivableId}|${a.componentCode}`;
       const total = (used.get(key) ?? 0) + a.amount;
       if (total > componentPending(c)) {
-        throw new FinanceError('ADJUSTMENT_EXCEEDS_PAYABLE', 'adjustment is larger than what is still payable', {
-          receivableId: a.receivableId,
-          componentCode: a.componentCode,
-        });
+        throw new FinanceError(
+          'ADJUSTMENT_EXCEEDS_PAYABLE',
+          'adjustment is larger than what is still payable',
+          {
+            receivableId: a.receivableId,
+            componentCode: a.componentCode,
+          },
+        );
       }
       used.set(key, total);
     }
@@ -116,26 +137,44 @@ export function resolveAdjustment(req: AdjustmentRequest, receivables: readonly 
     amount = req.value;
   } else {
     if (!Number.isInteger(req.value) || req.value < 1 || req.value > 10_000) {
-      throw new FinanceError('ADJUSTMENT_AMOUNT_INVALID', 'percentage must be between 0.01 % and 100 %');
+      throw new FinanceError(
+        'ADJUSTMENT_AMOUNT_INVALID',
+        'percentage must be between 0.01 % and 100 %',
+      );
     }
     amount = percentBp(sumPaise(cells.map((c) => c.payable)), req.value);
   }
   if (!Number.isSafeInteger(amount) || amount <= 0) {
-    throw new FinanceError('ADJUSTMENT_AMOUNT_INVALID', 'adjustment amount must be greater than zero');
+    throw new FinanceError(
+      'ADJUSTMENT_AMOUNT_INVALID',
+      'adjustment amount must be greater than zero',
+    );
   }
   if (amount > capacity) {
-    throw new FinanceError('ADJUSTMENT_EXCEEDS_PAYABLE', 'adjustment is larger than what is still payable', {
-      amount,
-      capacity,
-    });
+    throw new FinanceError(
+      'ADJUSTMENT_EXCEEDS_PAYABLE',
+      'adjustment is larger than what is still payable',
+      {
+        amount,
+        capacity,
+      },
+    );
   }
 
   const applications: AdjustmentApplication[] = [];
   if (req.distribution === 'PROPORTIONAL') {
-    const shares = splitProportional(amount, cells.map((c) => c.capacity));
+    const shares = splitProportional(
+      amount,
+      cells.map((c) => c.capacity),
+    );
     cells.forEach((c, i) => {
       const share = shares[i] ?? 0;
-      if (share > 0) applications.push({ receivableId: c.receivableId, componentCode: c.componentCode, amount: share });
+      if (share > 0)
+        applications.push({
+          receivableId: c.receivableId,
+          componentCode: c.componentCode,
+          amount: share,
+        });
     });
   } else {
     // EARLIEST_FIRST / LATEST_FIRST: walk receivables in due order (or reverse), components in order
@@ -152,7 +191,11 @@ export function resolveAdjustment(req: AdjustmentRequest, receivables: readonly 
         if (remaining === 0) break;
         const take = Math.min(remaining, c.capacity);
         if (take > 0) {
-          applications.push({ receivableId: c.receivableId, componentCode: c.componentCode, amount: take });
+          applications.push({
+            receivableId: c.receivableId,
+            componentCode: c.componentCode,
+            amount: take,
+          });
           remaining -= take;
         }
       }
@@ -172,14 +215,22 @@ function mutate(
     const r: Receivable = { ...orig, components: orig.components.map((c) => ({ ...c })) };
     for (const a of applications.filter((x) => x.receivableId === orig.id)) {
       const c = r.components.find((x) => x.code === a.componentCode);
-      if (!c) throw new FinanceError('ADJUSTMENT_INVALID', 'unknown component', { componentCode: a.componentCode });
-      c.adjusted += sign * a.amount;
-      if (c.adjusted < 0) throw new FinanceError('INVARIANT_VIOLATION', 'adjustment reversal below zero');
-      if (componentPending(c) < 0) {
-        throw new FinanceError('ADJUSTMENT_EXCEEDS_PAYABLE', 'adjustment is larger than what is still payable', {
-          receivableId: r.id,
-          componentCode: c.code,
+      if (!c)
+        throw new FinanceError('ADJUSTMENT_INVALID', 'unknown component', {
+          componentCode: a.componentCode,
         });
+      c.adjusted += sign * a.amount;
+      if (c.adjusted < 0)
+        throw new FinanceError('INVARIANT_VIOLATION', 'adjustment reversal below zero');
+      if (componentPending(c) < 0) {
+        throw new FinanceError(
+          'ADJUSTMENT_EXCEEDS_PAYABLE',
+          'adjustment is larger than what is still payable',
+          {
+            receivableId: r.id,
+            componentCode: c.code,
+          },
+        );
       }
     }
     const done = recompute({ ...r, version: orig.version + 1 });
@@ -189,12 +240,16 @@ function mutate(
 }
 
 /** Apply an APPROVED adjustment (reduces pending; the original `payable` is untouched → traceable). */
-export const applyAdjustment = (receivables: readonly Receivable[], apps: readonly AdjustmentApplication[]): Receivable[] =>
-  mutate(receivables, apps, 1);
+export const applyAdjustment = (
+  receivables: readonly Receivable[],
+  apps: readonly AdjustmentApplication[],
+): Receivable[] => mutate(receivables, apps, 1);
 
 /** Reverse a previously applied adjustment. */
-export const reverseAdjustment = (receivables: readonly Receivable[], apps: readonly AdjustmentApplication[]): Receivable[] =>
-  mutate(receivables, apps, -1);
+export const reverseAdjustment = (
+  receivables: readonly Receivable[],
+  apps: readonly AdjustmentApplication[],
+): Receivable[] => mutate(receivables, apps, -1);
 
 /** Mark receivables targeted by a not-yet-approved adjustment (blocks the PAID state, CL-09). */
 export function flagPendingAdjustment(

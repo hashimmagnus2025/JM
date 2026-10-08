@@ -21,9 +21,9 @@
 | `--bg` | `#F7F8F6` | app background (warm paper) |
 | `--surface` / `--surface-2` | `#FFFFFF` / `#F0F3F1` | cards / inset panels, table zebra hover |
 | `--border` / `--border-strong` | `#DDE3DF` / `#C3CDC8` | hairlines / inputs |
-| `--text` / `--text-muted` / `--text-subtle` | `#14201C` / `#4F5F58` / `#6F7F78` | body / secondary / hints (all ≥ 4.5:1 on surface) |
+| `--text` / `--text-muted` / `--text-subtle` | `#14201C` / `#4F5F58` / `#5E6E67` | body / secondary / hints (all ≥ 4.5:1 on surface) |
 | `--brand-50…900` | `#EAF6F2 #CFEBE2 #A2D7C7 #6FBDA7 #3FA088 #1F8670 #136D5B #0F5748 #0C4439 #08302A` | **primary = brand-600** (white text 6.2:1) |
-| `--success` (bg) | `#1B7F4F` (`#E3F4EA`) | Paid, success |
+| `--success` (bg) | `#17703F` (`#E3F4EA`) | Paid, success |
 | `--warning` (bg) | `#8A5A00` (`#FFF1D0`) | Due soon, pending approval |
 | `--danger` (bg) | `#B42318` (`#FDE8E6`) | Overdue, reversed, destructive |
 | `--info` (bg) | `#1D5FA8` (`#E5EFFB`) | informational |

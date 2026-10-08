@@ -28,7 +28,9 @@ const cmpStr = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
  *   Tier 1  (not yet overdue)            opening balance → penalty → installment, then oldest due date
  * which yields: ① oldest overdue ② opening balance ③ penalty ④ oldest pending installment ⑤ newer installments.
  */
-export function compareOldestDueFirst(today: BusinessDate): (a: Receivable, b: Receivable) => number {
+export function compareOldestDueFirst(
+  today: BusinessDate,
+): (a: Receivable, b: Receivable) => number {
   const tier = (r: Receivable): number => (isBefore(r.dueDate, today) ? 0 : 1);
   return (a, b) => {
     const ta = tier(a);
@@ -140,31 +142,42 @@ export function allocatePayment(input: AllocateInput): AllocateResult {
   const advance = input.advanceEnabled ?? false;
   const byId = new Map(input.receivables.map((r) => [r.id, r]));
   let allocations: AllocationDraft[] = [];
-  let unallocated = 0;
+  let unallocated: Paise;
 
   if (strategy === 'MANUAL') {
     const items = input.manual ?? [];
-    if (items.length === 0) throw new FinanceError('ALLOCATION_INVALID', 'manual allocation needs at least one item');
+    if (items.length === 0)
+      throw new FinanceError('ALLOCATION_INVALID', 'manual allocation needs at least one item');
     const seen = new Set<string>();
     let total = 0;
     for (const item of items) {
       if (seen.has(item.receivableId)) {
-        throw new FinanceError('ALLOCATION_INVALID', 'a receivable appears twice in the manual allocation', {
-          receivableId: item.receivableId,
-        });
+        throw new FinanceError(
+          'ALLOCATION_INVALID',
+          'a receivable appears twice in the manual allocation',
+          {
+            receivableId: item.receivableId,
+          },
+        );
       }
       seen.add(item.receivableId);
       validatePaymentAmount(item.amount);
       const r = byId.get(item.receivableId);
       if (!r || !isPayable(r)) {
-        throw new FinanceError('ALLOCATION_INVALID', 'receivable is not payable', { receivableId: item.receivableId });
+        throw new FinanceError('ALLOCATION_INVALID', 'receivable is not payable', {
+          receivableId: item.receivableId,
+        });
       }
       if (item.amount > r.pending) {
-        throw new FinanceError('ALLOCATION_INVALID', 'manual amount exceeds the receivable pending balance', {
-          receivableId: r.id,
-          amount: item.amount,
-          pending: r.pending,
-        });
+        throw new FinanceError(
+          'ALLOCATION_INVALID',
+          'manual amount exceeds the receivable pending balance',
+          {
+            receivableId: r.id,
+            amount: item.amount,
+            pending: r.pending,
+          },
+        );
       }
       total = addPaise(total, item.amount);
       allocations.push(draft(r, item.amount, priority));
@@ -177,22 +190,34 @@ export function allocatePayment(input: AllocateInput): AllocateResult {
     }
     unallocated = input.amount - total;
     if (unallocated > 0 && !advance) {
-      throw new FinanceError('ALLOCATION_INCOMPLETE', 'the whole payment must be allocated to dues', {
-        unallocated,
-      });
+      throw new FinanceError(
+        'ALLOCATION_INCOMPLETE',
+        'the whole payment must be allocated to dues',
+        {
+          unallocated,
+        },
+      );
     }
   } else {
     const allowed = input.eligibleReceivableIds ? new Set(input.eligibleReceivableIds) : null;
-    const eligible = input.receivables.filter((r) => isPayable(r) && (allowed === null || allowed.has(r.id)));
+    const eligible = input.receivables.filter(
+      (r) => isPayable(r) && (allowed === null || allowed.has(r.id)),
+    );
     const outstanding = eligible.reduce((s, r) => addPaise(s, r.pending), 0);
     if (outstanding === 0 && !advance) {
-      throw new FinanceError('NO_PAYABLE_RECEIVABLES', 'There is nothing outstanding to pay.', { amount: input.amount });
+      throw new FinanceError('NO_PAYABLE_RECEIVABLES', 'There is nothing outstanding to pay.', {
+        amount: input.amount,
+      });
     }
     if (input.amount > outstanding && !advance) {
-      throw new FinanceError('PAYMENT_EXCEEDS_OUTSTANDING', 'Payment is more than the outstanding amount.', {
-        amount: input.amount,
-        outstanding,
-      });
+      throw new FinanceError(
+        'PAYMENT_EXCEEDS_OUTSTANDING',
+        'Payment is more than the outstanding amount.',
+        {
+          amount: input.amount,
+          outstanding,
+        },
+      );
     }
     let remaining = input.amount;
     for (const r of orderReceivables(eligible, strategy, input.today)) {
@@ -206,7 +231,10 @@ export function allocatePayment(input: AllocateInput): AllocateResult {
 
   assertAllocationConservation(input.amount, allocations, unallocated);
   const updatedReceivables = applyAllocations(input.receivables, allocations);
-  allocations = allocations.map((a) => ({ ...a, componentSplit: a.componentSplit.map((s) => ({ ...s })) }));
+  allocations = allocations.map((a) => ({
+    ...a,
+    componentSplit: a.componentSplit.map((s) => ({ ...s })),
+  }));
   return { strategy, allocations, unallocated, updatedReceivables };
 }
 
@@ -223,11 +251,15 @@ export function applyAllocations(
 ): Receivable[] {
   const next = new Map<string, Receivable>();
   const touched = new Set<string>();
-  for (const r of receivables) next.set(r.id, { ...r, components: r.components.map((c) => ({ ...c })) });
+  for (const r of receivables)
+    next.set(r.id, { ...r, components: r.components.map((c) => ({ ...c })) });
 
   for (const a of allocations) {
     const r = next.get(a.receivableId);
-    if (!r) throw new FinanceError('ALLOCATION_INVALID', 'allocation targets an unknown receivable', { receivableId: a.receivableId });
+    if (!r)
+      throw new FinanceError('ALLOCATION_INVALID', 'allocation targets an unknown receivable', {
+        receivableId: a.receivableId,
+      });
     for (const split of a.componentSplit) {
       const c = r.components.find((x) => x.code === split.componentCode);
       if (!c) {
@@ -244,10 +276,14 @@ export function applyAllocations(
         });
       }
       if (componentPending(c) < 0) {
-        throw new FinanceError('PAYMENT_EXCEEDS_OUTSTANDING', 'allocation exceeds the component pending balance', {
-          receivableId: r.id,
-          component: c.code,
-        });
+        throw new FinanceError(
+          'PAYMENT_EXCEEDS_OUTSTANDING',
+          'allocation exceeds the component pending balance',
+          {
+            receivableId: r.id,
+            component: c.code,
+          },
+        );
       }
     }
     touched.add(r.id);

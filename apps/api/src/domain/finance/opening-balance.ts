@@ -1,4 +1,10 @@
-import { assertBusinessDate, assertPositivePaise, isBefore, type BusinessDate, type Paise } from '@sfm/shared';
+import {
+  assertBusinessDate,
+  assertPositivePaise,
+  isBefore,
+  type BusinessDate,
+  type Paise,
+} from '@sfm/shared';
 import { FinanceError } from './errors';
 import { newReceivable } from './receivable';
 import { OPENING_BALANCE_COMPONENT, type Receivable } from './types';
@@ -20,7 +26,8 @@ export interface OpeningBalanceInput {
   reason: string;
 }
 
-export const openingBalanceDedupeKey = (openingBalanceId: string): string => `OPENING_BALANCE:${openingBalanceId}`;
+export const openingBalanceDedupeKey = (openingBalanceId: string): string =>
+  `OPENING_BALANCE:${openingBalanceId}`;
 
 export interface OpeningBalanceContext {
   /** an ACTIVE opening balance already exists for this student + academic year */
@@ -28,7 +35,10 @@ export interface OpeningBalanceContext {
   academicYear?: { startDate: BusinessDate; endDate: BusinessDate };
 }
 
-export function validateOpeningBalance(input: OpeningBalanceInput, ctx: OpeningBalanceContext): void {
+export function validateOpeningBalance(
+  input: OpeningBalanceInput,
+  ctx: OpeningBalanceContext,
+): void {
   const bad = (msg: string, details?: Record<string, unknown>): never => {
     throw new FinanceError('OPENING_BALANCE_INVALID', msg, details);
   };
@@ -47,7 +57,8 @@ export function validateOpeningBalance(input: OpeningBalanceInput, ctx: OpeningB
   assertBusinessDate(input.effectiveDate, 'effective date');
   if (input.dueDate !== undefined) {
     assertBusinessDate(input.dueDate, 'due date');
-    if (isBefore(input.dueDate, input.effectiveDate)) bad('Due date cannot be before the effective date.');
+    if (isBefore(input.dueDate, input.effectiveDate))
+      bad('Due date cannot be before the effective date.');
   }
   if (input.reason.trim().length < 3) bad('A reason is required for an opening balance.');
   if (ctx.academicYear && isBefore(ctx.academicYear.endDate, input.effectiveDate)) {
@@ -75,7 +86,9 @@ export function buildOpeningBalanceReceivable(
     kind: 'OPENING_BALANCE',
     label: 'Opening balance',
     dueDate: input.dueDate ?? input.effectiveDate,
-    components: [{ code: OPENING_BALANCE_COMPONENT, name: 'Opening balance', payable: input.amount }],
+    components: [
+      { code: OPENING_BALANCE_COMPONENT, name: 'Opening balance', payable: input.amount },
+    ],
     dedupeKey: key,
   });
 }

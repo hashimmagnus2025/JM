@@ -3,7 +3,9 @@ import { canonicalJson } from './canonical';
 
 describe('canonicalJson', () => {
   it('is key-order independent and omits undefined properties', () => {
-    expect(canonicalJson({ b: 1, a: [2, { d: 1, c: 2 }], z: undefined })).toBe('{"a":[2,{"c":2,"d":1}],"b":1}');
+    expect(canonicalJson({ b: 1, a: [2, { d: 1, c: 2 }], z: undefined })).toBe(
+      '{"a":[2,{"c":2,"d":1}],"b":1}',
+    );
     expect(canonicalJson({ a: 1, b: 2 })).toBe(canonicalJson({ b: 2, a: 1 }));
   });
   it('handles primitives, dates and null', () => {
