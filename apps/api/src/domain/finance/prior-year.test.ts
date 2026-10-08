@@ -15,7 +15,13 @@ const TODAY = '2026-10-08';
 
 describe('historical academic-year separation (BRC-D1: keep ORIGINAL YEAR)', () => {
   // 2025-26: one installment of ₹10,000 still unpaid · 2026-27: new fee ₹50,000
-  const old: Receivable = mk({ id: 'old', no: 4, due: '2026-01-10', amount: R(10_000), year: Y2025 });
+  const old: Receivable = mk({
+    id: 'old',
+    no: 4,
+    due: '2026-01-10',
+    amount: R(10_000),
+    year: Y2025,
+  });
   const fees = buildInstallments({
     assignmentId: 'asg-26',
     studentId: STUDENT,
@@ -82,13 +88,22 @@ describe('historical academic-year separation (BRC-D1: keep ORIGINAL YEAR)', () 
 
   it('collection % of the new year is not polluted by the old year payment', () => {
     const res = allocatePayment({ amount: R(10_000), receivables: all, today: TODAY });
-    const y26 = summarize(res.updatedReceivables.filter((r) => r.academicYearId === Y2026), TODAY, S);
+    const y26 = summarize(
+      res.updatedReceivables.filter((r) => r.academicYearId === Y2026),
+      TODAY,
+      S,
+    );
     expect(y26.collectionBp).toBe(0);
     expect(y26.expectedFees).toBe(R(50_000));
   });
 
   it('a payment can be restricted to the current year only (cashier selects those dues)', () => {
-    const res = allocatePayment({ amount: R(5_000), receivables: all, today: TODAY, eligibleReceivableIds: [fees[0]?.id as string] });
+    const res = allocatePayment({
+      amount: R(5_000),
+      receivables: all,
+      today: TODAY,
+      eligibleReceivableIds: [fees[0]?.id as string],
+    });
     expect(res.allocations.map((a) => a.academicYearId)).toEqual([Y2026]);
     expect(res.updatedReceivables.find((r) => r.id === 'old')?.pending).toBe(R(10_000));
   });

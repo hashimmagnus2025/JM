@@ -84,6 +84,15 @@ importers:
 
   packages/shared: {}
 
+  packages/ui:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
 packages:
 
   '@babel/helper-string-parser@7.29.7':

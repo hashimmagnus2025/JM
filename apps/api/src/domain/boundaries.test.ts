@@ -10,10 +10,16 @@ const ROOT = join(__dirname);
 const files = (dir: string): string[] =>
   readdirSync(dir).flatMap((f) => {
     const p = join(dir, f);
-    return statSync(p).isDirectory() ? files(p) : p.endsWith('.ts') && !p.endsWith('.test.ts') ? [p] : [];
+    return statSync(p).isDirectory()
+      ? files(p)
+      : p.endsWith('.ts') && !p.endsWith('.test.ts')
+        ? [p]
+        : [];
   });
 const importsOf = (file: string): string[] =>
-  [...readFileSync(file, 'utf8').matchAll(/(?:import|export)\s[^'"]*?from\s+['"]([^'"]+)['"]/g)].map((m) => m[1] as string);
+  [
+    ...readFileSync(file, 'utf8').matchAll(/(?:import|export)\s[^'"]*?from\s+['"]([^'"]+)['"]/g),
+  ].map((m) => m[1] as string);
 
 describe('domain boundaries', () => {
   it('domain/finance imports only @sfm/shared and its own files (no mongoose, express, redis, fs, crypto…)', () => {
@@ -27,20 +33,29 @@ describe('domain boundaries', () => {
   it('domain/finance never reads the wall clock', () => {
     for (const f of files(join(ROOT, 'finance'))) {
       const src = readFileSync(f, 'utf8');
-      expect(/Date\.now\(|new Date\(\)/.test(src), `${relative(ROOT, f)} uses the system clock`).toBe(false);
+      expect(
+        /Date\.now\(|new Date\(\)/.test(src),
+        `${relative(ROOT, f)} uses the system clock`,
+      ).toBe(false);
     }
   });
   it('domain/billing is isolated from domain/finance (and vice-versa)', () => {
     for (const f of files(join(ROOT, 'billing'))) {
-      for (const spec of importsOf(f)) expect(spec.includes('finance'), `${relative(ROOT, f)} → ${spec}`).toBe(false);
+      for (const spec of importsOf(f))
+        expect(spec.includes('finance'), `${relative(ROOT, f)} → ${spec}`).toBe(false);
     }
     for (const f of files(join(ROOT, 'finance'))) {
-      for (const spec of importsOf(f)) expect(spec.includes('billing'), `${relative(ROOT, f)} → ${spec}`).toBe(false);
+      for (const spec of importsOf(f))
+        expect(spec.includes('billing'), `${relative(ROOT, f)} → ${spec}`).toBe(false);
     }
   });
   it('domain/academic is pure too', () => {
     for (const f of files(join(ROOT, 'academic'))) {
-      for (const spec of importsOf(f)) expect(spec === '@sfm/shared' || spec.startsWith('./'), `${relative(ROOT, f)} → ${spec}`).toBe(true);
+      for (const spec of importsOf(f))
+        expect(
+          spec === '@sfm/shared' || spec.startsWith('./'),
+          `${relative(ROOT, f)} → ${spec}`,
+        ).toBe(true);
     }
   });
 });

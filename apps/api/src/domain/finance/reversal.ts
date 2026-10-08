@@ -27,13 +27,19 @@ export function buildReversalAllocations(rows: readonly PostedAllocation[]): All
     academicYearId: r.academicYearId,
     kind: 'REVERSAL' as const,
     amount: -r.amount,
-    componentSplit: r.componentSplit.map((s) => ({ componentCode: s.componentCode, amount: -s.amount })),
+    componentSplit: r.componentSplit.map((s) => ({
+      componentCode: s.componentCode,
+      amount: -s.amount,
+    })),
     reversesAllocationId: r.id,
   }));
 }
 
 /** Re-open the receivables touched by the original payment. */
-export function applyReversal(receivables: readonly Receivable[], reversal: readonly AllocationDraft[]): Receivable[] {
+export function applyReversal(
+  receivables: readonly Receivable[],
+  reversal: readonly AllocationDraft[],
+): Receivable[] {
   return applyAllocations(receivables, reversal);
 }
 

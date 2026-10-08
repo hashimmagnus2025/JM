@@ -27,7 +27,10 @@ export function agingDays(
   return diffDays(basis === 'ORIGINAL_DUE_DATE' ? r.originalDueDate : r.dueDate, today);
 }
 
-export function bucketOf(days: number, boundaries: readonly [number, number, number]): AgingBucketKey {
+export function bucketOf(
+  days: number,
+  boundaries: readonly [number, number, number],
+): AgingBucketKey {
   if (days < 0) return 'notYetDue';
   if (days <= boundaries[0]) return 'd0_30';
   if (days <= boundaries[1]) return 'd31_60';

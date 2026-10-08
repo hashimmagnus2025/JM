@@ -5,7 +5,8 @@ import type { Receivable } from './types';
 /** Time-dependent state; never stored. */
 export type DueStatus = 'NOT_DUE' | 'DUE_SOON' | 'OVERDUE' | 'NONE';
 
-export type PaymentState = 'UNPAID' | 'PARTIAL' | 'PAID' | 'PENDING_ADJUSTMENT' | 'WAIVED' | 'TRANSFERRED' | 'VOID';
+export type PaymentState =
+  'UNPAID' | 'PARTIAL' | 'PAID' | 'PENDING_ADJUSTMENT' | 'WAIVED' | 'TRANSFERRED' | 'VOID';
 
 /**
  * DUE SOON (BRC-I1): `dueSoonDays` (default 7) before the due date, up to and including the due date.
@@ -18,7 +19,8 @@ export function deriveDueStatus(
 ): DueStatus {
   if (r.paymentStatus === 'VOID' || r.pending <= 0) return 'NONE';
   if (isBefore(r.dueDate, today)) return 'OVERDUE';
-  if (!isAfter(today, r.dueDate) && !isBefore(today, addDays(r.dueDate, -dueSoonDays))) return 'DUE_SOON';
+  if (!isAfter(today, r.dueDate) && !isBefore(today, addDays(r.dueDate, -dueSoonDays)))
+    return 'DUE_SOON';
   return 'NOT_DUE';
 }
 
@@ -45,7 +47,11 @@ export interface ReceivableDisplayStatus {
   primary: 'OVERDUE' | 'DUE_SOON' | PaymentState;
 }
 
-export function deriveDisplayStatus(r: Receivable, today: BusinessDate, dueSoonDays: number): ReceivableDisplayStatus {
+export function deriveDisplayStatus(
+  r: Receivable,
+  today: BusinessDate,
+  dueSoonDays: number,
+): ReceivableDisplayStatus {
   const payment = derivePaymentState(r);
   const due = deriveDueStatus(r, today, dueSoonDays);
   const primary = due === 'OVERDUE' ? 'OVERDUE' : due === 'DUE_SOON' ? 'DUE_SOON' : payment;
@@ -73,7 +79,11 @@ export interface ScopeState {
 }
 
 /** Student(-year) level state used by lists and dashboard buckets. Overdue is an overlay, not a bucket. */
-export function deriveScopeState(receivables: readonly Receivable[], today: BusinessDate, dueSoonDays: number): ScopeState {
+export function deriveScopeState(
+  receivables: readonly Receivable[],
+  today: BusinessDate,
+  dueSoonDays: number,
+): ScopeState {
   const live = receivables.filter((r) => r.paymentStatus !== 'VOID');
   const pending = totalPending(live);
   const paidAny = live.some((r) => r.paid > 0);

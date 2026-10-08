@@ -12,7 +12,13 @@ import { FinanceError } from './errors';
 import { buildOpeningBalanceReceivable, type OpeningBalanceSource } from './opening-balance';
 import { deriveDisplayStatus, type ReceivableDisplayStatus } from './status';
 import { summarize, type NextInstallment, type Summary } from './summary';
-import { DEFAULT_FINANCE_SETTINGS, type AllocationDraft, type FeeLine, type FinanceSettings, type Receivable } from './types';
+import {
+  DEFAULT_FINANCE_SETTINGS,
+  type AllocationDraft,
+  type FeeLine,
+  type FinanceSettings,
+  type Receivable,
+} from './types';
 
 export interface PreviewAdjustmentInput {
   type: 'SCHOLARSHIP' | 'DISCOUNT' | 'CONCESSION' | 'WAIVER' | 'OTHER';
@@ -66,7 +72,10 @@ export interface PreviewInstallmentRow {
 }
 
 export interface PreviewWarning {
-  code: 'INSTALLMENT_OVERDUE_ON_ENTRY' | 'OPENING_BALANCE_OVERDUE_ON_ENTRY' | 'ADJUSTMENT_PENDING_APPROVAL';
+  code:
+    | 'INSTALLMENT_OVERDUE_ON_ENTRY'
+    | 'OPENING_BALANCE_OVERDUE_ON_ENTRY'
+    | 'ADJUSTMENT_PENDING_APPROVAL';
   message: string;
 }
 
@@ -99,9 +108,21 @@ export interface FeePreview {
   summary: FeePreviewSummary;
   yearSummary: Summary;
   allYearsSummary: Summary;
-  appliedAdjustments: { type: PreviewAdjustmentInput['type']; amount: Paise; applications: AdjustmentApplication[] }[];
-  pendingAdjustments: { type: PreviewAdjustmentInput['type']; amount: Paise; applications: AdjustmentApplication[] }[];
-  historicalAllocations: { paymentDate: BusinessDate; amount: Paise; allocations: AllocationDraft[] }[];
+  appliedAdjustments: {
+    type: PreviewAdjustmentInput['type'];
+    amount: Paise;
+    applications: AdjustmentApplication[];
+  }[];
+  pendingAdjustments: {
+    type: PreviewAdjustmentInput['type'];
+    amount: Paise;
+    applications: AdjustmentApplication[];
+  }[];
+  historicalAllocations: {
+    paymentDate: BusinessDate;
+    amount: Paise;
+    allocations: AllocationDraft[];
+  }[];
   warnings: PreviewWarning[];
   /**
    * Canonical string of everything that determines the money (amounts, due dates, adjustments, payments).
@@ -135,7 +156,10 @@ export function buildFeePreview(input: FeePreviewInput): FeePreview {
   if (input.openingBalance) {
     const ob = input.openingBalance;
     const existingActive = existing.some(
-      (r) => r.kind === 'OPENING_BALANCE' && r.academicYearId === input.academicYearId && r.paymentStatus !== 'VOID',
+      (r) =>
+        r.kind === 'OPENING_BALANCE' &&
+        r.academicYearId === input.academicYearId &&
+        r.paymentStatus !== 'VOID',
     );
     fresh = [
       buildOpeningBalanceReceivable(
@@ -160,7 +184,8 @@ export function buildFeePreview(input: FeePreviewInput): FeePreview {
   /* 3 ─ adjustments: approved ones apply, the rest are only reported */
   const applied: FeePreview['appliedAdjustments'] = [];
   const pending: FeePreview['pendingAdjustments'] = [];
-  const yearScope = (rs: Receivable[]): Receivable[] => rs.filter((r) => r.academicYearId === input.academicYearId);
+  const yearScope = (rs: Receivable[]): Receivable[] =>
+    rs.filter((r) => r.academicYearId === input.academicYearId);
   const adjustments = input.adjustments ?? [];
   for (const a of adjustments.filter((x) => x.approved)) {
     const resolved = resolveAdjustment(a.request, yearScope(fresh));
@@ -170,10 +195,16 @@ export function buildFeePreview(input: FeePreviewInput): FeePreview {
   /* 4 ─ historical payments: same allocation engine, oldest due first, on the payment's own date */
   let all: Receivable[] = [...existing, ...fresh];
   const historical: FeePreview['historicalAllocations'] = [];
-  const payments = [...(input.historicalPayments ?? [])].sort((a, b) => (a.paymentDate < b.paymentDate ? -1 : a.paymentDate > b.paymentDate ? 1 : 0));
+  const payments = [...(input.historicalPayments ?? [])].sort((a, b) =>
+    a.paymentDate < b.paymentDate ? -1 : a.paymentDate > b.paymentDate ? 1 : 0,
+  );
   for (const p of payments) {
     if (isAfter(p.paymentDate, input.asOf)) {
-      throw new FinanceError('PAYMENT_AMOUNT_INVALID', 'A historical payment cannot be dated in the future.', { paymentDate: p.paymentDate });
+      throw new FinanceError(
+        'PAYMENT_AMOUNT_INVALID',
+        'A historical payment cannot be dated in the future.',
+        { paymentDate: p.paymentDate },
+      );
     }
     const res = allocatePayment({
       amount: p.amount,
@@ -205,10 +236,17 @@ export function buildFeePreview(input: FeePreviewInput): FeePreview {
   const yearSummary = summarize(receivables, input.asOf, settings);
   const allYearsSummary = summarize(all, input.asOf, settings);
   const scenarioOutstanding = summarize(scenario, input.asOf, settings).totalOutstanding;
-  const existingPaidDelta = existingAfter.reduce((s, r) => s + r.paid, 0) - existing.reduce((s, r) => s + r.paid, 0);
+  const existingPaidDelta =
+    existingAfter.reduce((s, r) => s + r.paid, 0) - existing.reduce((s, r) => s + r.paid, 0);
 
   const rows: PreviewInstallmentRow[] = [...receivables]
-    .sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : (a.installmentNo ?? 0) - (b.installmentNo ?? 0)))
+    .sort((a, b) =>
+      a.dueDate < b.dueDate
+        ? -1
+        : a.dueDate > b.dueDate
+          ? 1
+          : (a.installmentNo ?? 0) - (b.installmentNo ?? 0),
+    )
     .map((r) => ({
       receivableId: r.id,
       kind: r.kind,
@@ -223,14 +261,27 @@ export function buildFeePreview(input: FeePreviewInput): FeePreview {
     }));
 
   const warnings: PreviewWarning[] = [];
-  if (receivables.some((r) => r.kind === 'INSTALLMENT' && r.pending > 0 && r.dueDate < input.asOf)) {
-    warnings.push({ code: 'INSTALLMENT_OVERDUE_ON_ENTRY', message: 'One or more installments are already overdue on the admission date.' });
+  if (
+    receivables.some((r) => r.kind === 'INSTALLMENT' && r.pending > 0 && r.dueDate < input.asOf)
+  ) {
+    warnings.push({
+      code: 'INSTALLMENT_OVERDUE_ON_ENTRY',
+      message: 'One or more installments are already overdue on the admission date.',
+    });
   }
-  if (receivables.some((r) => r.kind === 'OPENING_BALANCE' && r.pending > 0 && r.dueDate < input.asOf)) {
-    warnings.push({ code: 'OPENING_BALANCE_OVERDUE_ON_ENTRY', message: 'The opening balance is already overdue.' });
+  if (
+    receivables.some((r) => r.kind === 'OPENING_BALANCE' && r.pending > 0 && r.dueDate < input.asOf)
+  ) {
+    warnings.push({
+      code: 'OPENING_BALANCE_OVERDUE_ON_ENTRY',
+      message: 'The opening balance is already overdue.',
+    });
   }
   if (pending.length > 0) {
-    warnings.push({ code: 'ADJUSTMENT_PENDING_APPROVAL', message: 'Some concessions are awaiting approval and do not reduce the outstanding yet.' });
+    warnings.push({
+      code: 'ADJUSTMENT_PENDING_APPROVAL',
+      message: 'Some concessions are awaiting approval and do not reduce the outstanding yet.',
+    });
   }
 
   const summary: FeePreviewSummary = {

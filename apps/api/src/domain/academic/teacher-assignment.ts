@@ -1,4 +1,12 @@
-import { addDays, assertBusinessDate, isAfter, isBefore, maxDate, minDate, type BusinessDate } from '@sfm/shared';
+import {
+  addDays,
+  assertBusinessDate,
+  isAfter,
+  isBefore,
+  maxDate,
+  minDate,
+  type BusinessDate,
+} from '@sfm/shared';
 import { AcademicError } from './errors';
 
 /**
@@ -53,11 +61,15 @@ export const DEFAULT_ASSIGNMENT_SETTINGS: AssignmentSettings = { allowMultipleDi
 function assertWithinYear(date: BusinessDate, year: AcademicYearRange): void {
   assertBusinessDate(date, 'effective date');
   if (isBefore(date, year.startDate) || isAfter(date, year.endDate)) {
-    throw new AcademicError('EFFECTIVE_DATE_OUTSIDE_YEAR', 'The effective date must fall inside the academic year.', {
-      date,
-      start: year.startDate,
-      end: year.endDate,
-    });
+    throw new AcademicError(
+      'EFFECTIVE_DATE_OUTSIDE_YEAR',
+      'The effective date must fall inside the academic year.',
+      {
+        date,
+        start: year.startDate,
+        end: year.endDate,
+      },
+    );
   }
 }
 
@@ -69,16 +81,26 @@ function assertTeacherCanTake(
   ignoreAssignmentId?: string,
 ): void {
   if (teacher.status !== 'ACTIVE') {
-    throw new AcademicError('TEACHER_NOT_ACTIVE', 'Only an active teacher can be assigned.', { teacherId: teacher.id });
+    throw new AcademicError('TEACHER_NOT_ACTIVE', 'Only an active teacher can be assigned.', {
+      teacherId: teacher.id,
+    });
   }
   if (!settings.allowMultipleDivisions) {
     const clash = existing.find(
-      (a) => a.isCurrent && a.academicYearId === year.id && a.teacherId === teacher.id && a.id !== ignoreAssignmentId,
+      (a) =>
+        a.isCurrent &&
+        a.academicYearId === year.id &&
+        a.teacherId === teacher.id &&
+        a.id !== ignoreAssignmentId,
     );
     if (clash) {
-      throw new AcademicError('TEACHER_ALREADY_ASSIGNED', 'This teacher already has a division in this academic year.', {
-        divisionId: clash.divisionId,
-      });
+      throw new AcademicError(
+        'TEACHER_ALREADY_ASSIGNED',
+        'This teacher already has a division in this academic year.',
+        {
+          divisionId: clash.divisionId,
+        },
+      );
     }
   }
 }
@@ -96,10 +118,15 @@ export interface AssignInput {
 export function planAssign(input: AssignInput): { create: TeacherAssignment } {
   const settings = input.settings ?? DEFAULT_ASSIGNMENT_SETTINGS;
   if (input.division.academicYearId !== input.year.id) {
-    throw new AcademicError('ASSIGNMENT_YEAR_MISMATCH', 'The division belongs to a different academic year.');
+    throw new AcademicError(
+      'ASSIGNMENT_YEAR_MISMATCH',
+      'The division belongs to a different academic year.',
+    );
   }
   assertWithinYear(input.effectiveFrom, input.year);
-  const taken = input.existing.find((a) => a.isCurrent && a.divisionId === input.division.id && a.role === 'CLASS_TEACHER');
+  const taken = input.existing.find(
+    (a) => a.isCurrent && a.divisionId === input.division.id && a.role === 'CLASS_TEACHER',
+  );
   if (taken) {
     throw new AcademicError(
       'DIVISION_ALREADY_HAS_TEACHER',
@@ -143,23 +170,44 @@ export interface ChangePlan {
 export function planChange(input: ChangeInput): ChangePlan {
   const settings = input.settings ?? DEFAULT_ASSIGNMENT_SETTINGS;
   const { current } = input;
-  if (!current.isCurrent) throw new AcademicError('ASSIGNMENT_NOT_CURRENT', 'Only the current assignment can be changed.');
+  if (!current.isCurrent)
+    throw new AcademicError(
+      'ASSIGNMENT_NOT_CURRENT',
+      'Only the current assignment can be changed.',
+    );
   if (current.academicYearId !== input.year.id) {
-    throw new AcademicError('ASSIGNMENT_YEAR_MISMATCH', 'The assignment belongs to a different academic year.');
+    throw new AcademicError(
+      'ASSIGNMENT_YEAR_MISMATCH',
+      'The assignment belongs to a different academic year.',
+    );
   }
   if (input.reason.trim().length < 3) {
-    throw new AcademicError('ASSIGNMENT_CHANGE_INVALID', 'A reason is required to change the class teacher.');
+    throw new AcademicError(
+      'ASSIGNMENT_CHANGE_INVALID',
+      'A reason is required to change the class teacher.',
+    );
   }
   if (input.newTeacher.id === current.teacherId) {
-    throw new AcademicError('ASSIGNMENT_CHANGE_INVALID', 'The new teacher is already the class teacher.');
+    throw new AcademicError(
+      'ASSIGNMENT_CHANGE_INVALID',
+      'The new teacher is already the class teacher.',
+    );
   }
   assertWithinYear(input.effectiveFrom, input.year);
   if (!isAfter(input.effectiveFrom, current.effectiveFrom)) {
-    throw new AcademicError('ASSIGNMENT_CHANGE_INVALID', 'The change must take effect after the current assignment started.');
+    throw new AcademicError(
+      'ASSIGNMENT_CHANGE_INVALID',
+      'The change must take effect after the current assignment started.',
+    );
   }
   assertTeacherCanTake(input.newTeacher, input.year, input.existing, settings, current.id);
   return {
-    close: { id: current.id, effectiveTo: addDays(input.effectiveFrom, -1), isCurrent: false, endReason: 'CHANGED' },
+    close: {
+      id: current.id,
+      effectiveTo: addDays(input.effectiveFrom, -1),
+      isCurrent: false,
+      endReason: 'CHANGED',
+    },
     create: {
       id: input.newId,
       academicYearId: current.academicYearId,
@@ -210,7 +258,11 @@ export function teachersDuring(
         !isAfter(a.effectiveFrom, to) &&
         (a.effectiveTo === null || !isBefore(a.effectiveTo, from)),
     )
-    .map((a) => ({ assignment: a, from: maxDate(a.effectiveFrom, from), to: a.effectiveTo === null ? to : minDate(a.effectiveTo, to) }))
+    .map((a) => ({
+      assignment: a,
+      from: maxDate(a.effectiveFrom, from),
+      to: a.effectiveTo === null ? to : minDate(a.effectiveTo, to),
+    }))
     .sort((x, y) => (x.from < y.from ? -1 : x.from > y.from ? 1 : 0));
 }
 
@@ -223,8 +275,16 @@ export function teacherForYearView(
   divisionId: string,
   year: AcademicYearRange,
   today: BusinessDate,
-): { asOf: BusinessDate; teacher: TeacherAssignment | null; during: ReturnType<typeof teachersDuring> } {
-  const asOf = isAfter(today, year.endDate) ? year.endDate : isBefore(today, year.startDate) ? year.startDate : today;
+): {
+  asOf: BusinessDate;
+  teacher: TeacherAssignment | null;
+  during: ReturnType<typeof teachersDuring>;
+} {
+  const asOf = isAfter(today, year.endDate)
+    ? year.endDate
+    : isBefore(today, year.startDate)
+      ? year.startDate
+      : today;
   return {
     asOf,
     teacher: resolveTeacherAsOf(assignments, divisionId, asOf),
