@@ -114,7 +114,7 @@ External: Sentry (SaaS), uptime monitor, WhatsApp/SMS/Email providers.
 
 | Layer | Technology | Why it earns its place | Guardrail |
 |---|---|---|---|
-| Runtime | **Node.js 22 LTS** (≥ 22; runs unchanged on 24) + TypeScript `strict` | One language across web/api/shared schemas. | `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` on. |
+| Runtime | **Node.js 22 LTS** (≥ 22; runs unchanged on 24) + TypeScript `strict` | One language across web/api/shared schemas. | `strict`, `noUncheckedIndexedAccess` on. |
 | API | **Express 5** | Native async error propagation; mature middleware ecosystem. | Thin controllers; no logic in routes. |
 | DB | **MongoDB 8 + Mongoose** | Requested. Transactions, aggregation, partial/compound indexes cover every need. | Replica set always (even local). DTO ≠ persistence schema. |
 | Validation | **Zod** (shared package) | One schema → backend validation, frontend forms (RHF resolver), OpenAPI. | Strict objects (reject unknown keys → no mass-assignment). |

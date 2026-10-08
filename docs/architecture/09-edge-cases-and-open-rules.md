@@ -43,7 +43,7 @@
 | E26 | Receipt number gap after failed payment | Counter increment is inside the transaction → rollback leaves no gap. |
 | E27 | Receipt reprint years later after student renamed / class changed | Prints from immutable snapshot; "Duplicate copy" marker. |
 | E28 | Payment for a student in a CLOSED year | Blocked → override flow. |
-| E29 | Allocation to opening balance + penalties + installments in one payment | Strategy order; component split pro-rata; per-component accounting in `componentSplit`. |
+| E29 | Allocation to opening balance + penalties + installments in one payment | Strategy order; component split by configured priority; per-component accounting in `componentSplit`. |
 | E30 | Advance credit exists and a new year's fees are generated | Auto-apply (setting) creates `ADVANCE_ADJUSTMENT` allocations; never silently — shown on receipt/statement. |
 
 ### Fees, installments, adjustments, penalties

@@ -220,7 +220,7 @@ Receivable {                            // ONE payable unit (decision D2)
   payable, adjusted, transferred, paid, pending,   // = Σ components; pending = payable − adjusted − transferred − paid (stored, guarded)
   // `transferred` = amount moved to a later year by a manual, audited carry-forward (decision BRC-D1); NOT a discount, NOT collected
   hasPendingAdjustment: boolean,         // drives the PAID vs PENDING_ADJUSTMENT status (decision BRC-I1)
-  paymentStatus: UNPAID | PARTIAL | PAID | WAIVED | VOID,
+  paymentStatus: UNPAID | PARTIAL | PAID | WAIVED | TRANSFERRED | VOID,   // WAIVED = fully adjusted; TRANSFERRED = remainder carried forward (BRC-D1)
   restructuredFromId?→, restructureSeq?, dedupeKey, voidReason?, version
 }
 // Invariant: payable ≥ 0; adjusted+transferred+paid ≤ payable; pending = payable−adjusted−transferred−paid ≥ 0  (Mongo $expr validator + engine)
