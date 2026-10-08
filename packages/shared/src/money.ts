@@ -9,7 +9,8 @@ export type Paise = number;
 
 export class MoneyError extends Error {
   constructor(
-    public readonly code: 'MONEY_NOT_INTEGER' | 'MONEY_NEGATIVE' | 'MONEY_OVERFLOW' | 'MONEY_INVALID_INPUT',
+    public readonly code:
+      'MONEY_NOT_INTEGER' | 'MONEY_NEGATIVE' | 'MONEY_OVERFLOW' | 'MONEY_INVALID_INPUT',
     message: string,
   ) {
     super(message);
@@ -36,7 +37,8 @@ export function assertPositivePaise(n: unknown, label = 'amount'): asserts n is 
 }
 
 function checked(n: number): number {
-  if (!Number.isSafeInteger(n)) throw new MoneyError('MONEY_OVERFLOW', 'amount exceeds the safe range');
+  if (!Number.isSafeInteger(n))
+    throw new MoneyError('MONEY_OVERFLOW', 'amount exceeds the safe range');
   return n;
 }
 
@@ -77,7 +79,8 @@ export const percentBp = (amount: Paise, bp: number): Paise => mulDivRound(amoun
  */
 export function splitProportional(total: Paise, weights: readonly number[]): Paise[] {
   assertNonNegativePaise(total, 'total');
-  if (weights.length === 0) throw new MoneyError('MONEY_INVALID_INPUT', 'weights must not be empty');
+  if (weights.length === 0)
+    throw new MoneyError('MONEY_INVALID_INPUT', 'weights must not be empty');
   weights.forEach((w) => assertNonNegativePaise(w, 'weight'));
   const sumW = weights.reduce((s, w) => s + BigInt(w), 0n);
   if (sumW === 0n) {
@@ -108,7 +111,8 @@ export function splitProportional(total: Paise, weights: readonly number[]): Pai
 /** n equal parts; every part is floor(total/n) and the LAST part absorbs the leftover paise. */
 export function splitEvenRemainderLast(total: Paise, n: number): Paise[] {
   assertNonNegativePaise(total, 'total');
-  if (!Number.isInteger(n) || n < 1) throw new MoneyError('MONEY_INVALID_INPUT', 'n must be a positive integer');
+  if (!Number.isInteger(n) || n < 1)
+    throw new MoneyError('MONEY_INVALID_INPUT', 'n must be a positive integer');
   const base = Math.floor(total / n);
   const parts = Array.from({ length: n }, () => base);
   parts[n - 1] = total - base * (n - 1);

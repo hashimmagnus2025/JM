@@ -13,9 +13,9 @@
 │  ├─ api/                         Express 5 + Mongoose (modular monolith)
 │  └─ web/                         React 19 + Vite SPA
 ├─ packages/
-│  ├─ shared/                      Zod schemas (DTOs), enums, permission registry, error codes, labels, money/date formatters
-│  ├─ ui/                          design tokens, Tailwind preset, shadcn-based components, Storybook
-│  └─ config/                      tsconfig, eslint (incl. boundaries), prettier
+│  ├─ shared/                      money (paise), business dates + Clock, canonical JSON (Phase 0/1); later Zod DTOs, enums, permission registry, labels
+│  ├─ ui/                          design tokens (Phase 0, WCAG-tested, generated CSS); components + Storybook from Phase 6
+│  (shared tsconfig / eslint / prettier configs live at the repository root for now)
 ├─ e2e/                            Playwright suites (+ axe)
 ├─ ops/                            Dockerfiles, compose (dev/prod), nginx conf, backup scripts, CI templates
 ├─ docs/                           architecture (this set), ADRs, runbooks, API guide

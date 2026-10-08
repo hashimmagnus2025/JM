@@ -27,7 +27,8 @@ function stringify(value: unknown): string {
       break;
   }
   if (value instanceof Date) return JSON.stringify(value.toISOString());
-  if (Array.isArray(value)) return `[${value.map((v) => stringify(v === undefined ? null : v)).join(',')}]`;
+  if (Array.isArray(value))
+    return `[${value.map((v) => stringify(v === undefined ? null : v)).join(',')}]`;
   const obj = value as Record<string, unknown>;
   const keys = Object.keys(obj)
     .filter((k) => obj[k] !== undefined)

@@ -49,7 +49,13 @@ export interface Summary {
   nextInstallment: NextInstallment | null;
 }
 
-const zeroTotals = (): KindTotals => ({ payable: 0, adjusted: 0, transferred: 0, paid: 0, pending: 0 });
+const zeroTotals = (): KindTotals => ({
+  payable: 0,
+  adjusted: 0,
+  transferred: 0,
+  paid: 0,
+  pending: 0,
+});
 
 export function summarize(
   receivables: readonly Receivable[],
@@ -159,7 +165,10 @@ export function summarizeByAcademicYear(
     groups.set(r.academicYearId, list);
   }
   const earliest = (rs: Receivable[]): BusinessDate =>
-    rs.reduce((m, r) => (isAfter(m, r.originalDueDate) ? r.originalDueDate : m), rs[0]?.originalDueDate ?? '9999-12-31');
+    rs.reduce(
+      (m, r) => (isAfter(m, r.originalDueDate) ? r.originalDueDate : m),
+      rs[0]?.originalDueDate ?? '9999-12-31',
+    );
   return [...groups.entries()]
     .sort(([ka, a], [kb, b]) => {
       const ea = earliest(a);

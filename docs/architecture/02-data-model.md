@@ -59,7 +59,7 @@ SystemSetting { key, value, schemaVersion }        // typed by a Zod registry pe
 //        lateFee.materialize, aging.basis, notification.quietHours, student.customFieldDefs[] …
 //  index: **(institutionId, key)**.   Every change is audited (previous/new).
 
-Counter { _id: "<institutionId>:<seriesKey>", seq }  // findOneAndUpdate $inc inside the txn
+Counter { _id: "<institutionId>:<seriesKey>", seq }  // atomic findOneAndUpdate $inc OUTSIDE the transaction: never conflicts, never rolled back → gaps possible, reuse impossible (BRC-G1)
 
 File { key, bucket, mime, size, sha256, kind: LOGO|RECEIPT_PDF|EXPORT|IMPORT|PHOTO, ownerType?, ownerId?, expiresAt? }
 //  index: **(bucket,key)**, (ownerType,ownerId), TTL-style cleanup by expiresAt (job)

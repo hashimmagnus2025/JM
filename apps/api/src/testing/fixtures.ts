@@ -29,7 +29,12 @@ export function mk(o: MkOpts): Receivable {
     studentId: o.student ?? STUDENT,
     academicYearId: o.year ?? Y2026,
     kind: o.kind ?? 'INSTALLMENT',
-    label: o.kind === 'OPENING_BALANCE' ? 'Opening balance' : o.kind === 'PENALTY' ? 'Late fee' : `Installment ${o.no ?? ''}`.trim(),
+    label:
+      o.kind === 'OPENING_BALANCE'
+        ? 'Opening balance'
+        : o.kind === 'PENALTY'
+          ? 'Late fee'
+          : `Installment ${o.no ?? ''}`.trim(),
     installmentNo: o.no,
     dueDate: o.due,
     parentReceivableId: o.parent,
@@ -58,12 +63,18 @@ export function deepFreeze<T>(value: T): T {
 }
 
 /** run `fn`, return the thrown FinanceError (or fail) */
-export function catchFinance(fn: () => unknown): { code: string; details?: Record<string, unknown>; message: string } {
+export function catchFinance(fn: () => unknown): {
+  code: string;
+  details?: Record<string, unknown>;
+  message: string;
+} {
   try {
     fn();
   } catch (e) {
     const err = e as { code?: string; details?: Record<string, unknown>; message: string };
-    return err.details === undefined ? { code: String(err.code), message: err.message } : { code: String(err.code), details: err.details, message: err.message };
+    return err.details === undefined
+      ? { code: String(err.code), message: err.message }
+      : { code: String(err.code), details: err.details, message: err.message };
   }
   throw new Error('expected the function to throw');
 }

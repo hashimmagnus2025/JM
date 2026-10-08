@@ -55,13 +55,23 @@ export function planCarryForward(input: CarryForwardInput): CarryForwardPlan {
     if (seen.has(r.id)) bad('A due was selected twice.', { receivableId: r.id });
     seen.add(r.id);
     if (r.academicYearId === input.targetAcademicYearId) {
-      bad('Dues can only be carried forward from a different academic year.', { receivableId: r.id });
+      bad('Dues can only be carried forward from a different academic year.', {
+        receivableId: r.id,
+      });
     }
-    if (!isPayable(r)) bad('This due has nothing pending to carry forward.', { receivableId: r.id });
-    if (r.hasPendingAdjustment) bad('Resolve the pending adjustment before carrying this due forward.', { receivableId: r.id });
+    if (!isPayable(r))
+      bad('This due has nothing pending to carry forward.', { receivableId: r.id });
+    if (r.hasPendingAdjustment)
+      bad('Resolve the pending adjustment before carrying this due forward.', {
+        receivableId: r.id,
+      });
     const amount = s.amount ?? r.pending;
     if (!Number.isSafeInteger(amount) || amount <= 0 || amount > r.pending) {
-      bad('Carry-forward amount must be between 1 paisa and the pending balance.', { receivableId: r.id, amount, pending: r.pending });
+      bad('Carry-forward amount must be between 1 paisa and the pending balance.', {
+        receivableId: r.id,
+        amount,
+        pending: r.pending,
+      });
     }
     // take the amount component by component, in the receivable's own order
     const next: Receivable = { ...r, components: r.components.map((c) => ({ ...c })) };

@@ -8,7 +8,8 @@ import { isAfter, isBefore, mulDivRound, type BusinessDate, type Paise } from '@
  * billing point are settings (`billing.ratePerStudentPaise`, `billing.point`).
  */
 
-export type BillingStudentStatus = 'ACTIVE' | 'INACTIVE' | 'TRANSFERRED' | 'WITHDRAWN' | 'PASSED_OUT' | 'ARCHIVED';
+export type BillingStudentStatus =
+  'ACTIVE' | 'INACTIVE' | 'TRANSFERRED' | 'WITHDRAWN' | 'PASSED_OUT' | 'ARCHIVED';
 
 export interface BillingStudent {
   id: string;
@@ -39,7 +40,9 @@ export function countActiveStudents(input: {
   academicYearId: string;
   asOf: BusinessDate;
 }): ActiveStudentCount {
-  const billable = new Set(input.students.filter((s) => isBillableStudentStatus(s.status)).map((s) => s.id));
+  const billable = new Set(
+    input.students.filter((s) => isBillableStudentStatus(s.status)).map((s) => s.id),
+  );
   const active = new Set<string>();
   for (const e of input.enrollments) {
     if (e.academicYearId !== input.academicYearId || e.status === 'CANCELLED') continue;
@@ -52,16 +55,28 @@ export function countActiveStudents(input: {
 }
 
 /** count × rate, overflow-safe. Example (SOW): 100 students × ₹120 = ₹12,000. */
-export function computeAnnualStudentCharge(input: { activeCount: number; ratePerStudentPaise: Paise }): Paise {
-  if (!Number.isInteger(input.activeCount) || input.activeCount < 0) throw new RangeError('active count must be a non-negative integer');
-  if (!Number.isSafeInteger(input.ratePerStudentPaise) || input.ratePerStudentPaise < 0) throw new RangeError('rate must be a non-negative whole paise amount');
+export function computeAnnualStudentCharge(input: {
+  activeCount: number;
+  ratePerStudentPaise: Paise;
+}): Paise {
+  if (!Number.isInteger(input.activeCount) || input.activeCount < 0)
+    throw new RangeError('active count must be a non-negative integer');
+  if (!Number.isSafeInteger(input.ratePerStudentPaise) || input.ratePerStudentPaise < 0)
+    throw new RangeError('rate must be a non-negative whole paise amount');
   return mulDivRound(input.activeCount, input.ratePerStudentPaise, 1);
 }
 
-export type BillingPoint = { kind: 'ACADEMIC_YEAR_START' } | { kind: 'FIXED_DATE'; date: BusinessDate } | { kind: 'ON_DEMAND' };
+export type BillingPoint =
+  | { kind: 'ACADEMIC_YEAR_START' }
+  | { kind: 'FIXED_DATE'; date: BusinessDate }
+  | { kind: 'ON_DEMAND' };
 
 /** the date on which the active-student count is taken (CL-13 default: the academic year's start date) */
-export function resolveBillingDate(point: BillingPoint, year: { startDate: BusinessDate }, today: BusinessDate): BusinessDate {
+export function resolveBillingDate(
+  point: BillingPoint,
+  year: { startDate: BusinessDate },
+  today: BusinessDate,
+): BusinessDate {
   switch (point.kind) {
     case 'ACADEMIC_YEAR_START':
       return year.startDate;

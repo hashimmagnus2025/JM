@@ -41,14 +41,22 @@ export function resolveFeeStructure(
     if (r === null) continue;
     if (best === null || r < best.r) best = { c, r };
     else if (r === best.r) {
-      throw new FinanceError('NO_FEE_STRUCTURE', 'More than one fee structure matches with the same specificity.', {
-        a: best.c.id,
-        b: c.id,
-      });
+      throw new FinanceError(
+        'NO_FEE_STRUCTURE',
+        'More than one fee structure matches with the same specificity.',
+        {
+          a: best.c.id,
+          b: c.id,
+        },
+      );
     }
   }
   if (!best) {
-    throw new FinanceError('NO_FEE_STRUCTURE', 'No published fee structure applies to this class, division and category.', ctx as unknown as Record<string, unknown>);
+    throw new FinanceError(
+      'NO_FEE_STRUCTURE',
+      'No published fee structure applies to this class, division and category.',
+      ctx as unknown as Record<string, unknown>,
+    );
   }
   return best.c;
 }

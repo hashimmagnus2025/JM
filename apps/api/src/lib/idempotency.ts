@@ -10,13 +10,16 @@ export interface IdempotencyRecord {
 }
 
 export type IdempotencyDecision =
-  | { action: 'PROCEED' }
-  | { action: 'REPLAY' }
-  | { action: 'KEY_REUSED_DIFFERENT_REQUEST' };
+  { action: 'PROCEED' } | { action: 'REPLAY' } | { action: 'KEY_REUSED_DIFFERENT_REQUEST' };
 
-export function decideIdempotency(existing: IdempotencyRecord | null, requestHash: string): IdempotencyDecision {
+export function decideIdempotency(
+  existing: IdempotencyRecord | null,
+  requestHash: string,
+): IdempotencyDecision {
   if (existing === null) return { action: 'PROCEED' };
-  return existing.requestHash === requestHash ? { action: 'REPLAY' } : { action: 'KEY_REUSED_DIFFERENT_REQUEST' };
+  return existing.requestHash === requestHash
+    ? { action: 'REPLAY' }
+    : { action: 'KEY_REUSED_DIFFERENT_REQUEST' };
 }
 
 /** Keys are client-generated UUID-ish strings; reject anything that is not a sane opaque token. */

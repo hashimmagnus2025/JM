@@ -1,9 +1,17 @@
-import { addPaise, assertNonNegativePaise, sumPaise, type BusinessDate, type Paise } from '@sfm/shared';
+import {
+  addPaise,
+  assertNonNegativePaise,
+  sumPaise,
+  type BusinessDate,
+  type Paise,
+} from '@sfm/shared';
 import { FinanceError } from './errors';
 import type { ComponentBalance, Receivable, ReceivableKind, ReceivableStatus } from './types';
 
 /** Stored status derived from the amounts (VOID is sticky). */
-export function deriveStoredStatus(r: Pick<Receivable, 'paymentStatus' | 'pending' | 'paid' | 'transferred'>): ReceivableStatus {
+export function deriveStoredStatus(
+  r: Pick<Receivable, 'paymentStatus' | 'pending' | 'paid' | 'transferred'>,
+): ReceivableStatus {
   if (r.paymentStatus === 'VOID') return 'VOID';
   if (r.pending === 0) {
     if (r.transferred > 0) return 'TRANSFERRED';
@@ -13,7 +21,8 @@ export function deriveStoredStatus(r: Pick<Receivable, 'paymentStatus' | 'pendin
 }
 
 /** Component-level pending. */
-export const componentPending = (c: ComponentBalance): Paise => c.payable - c.adjusted - c.transferred - c.paid;
+export const componentPending = (c: ComponentBalance): Paise =>
+  c.payable - c.adjusted - c.transferred - c.paid;
 
 /**
  * Recompute every aggregate of a receivable from its components (single source of truth)
@@ -55,7 +64,8 @@ export function newReceivable(init: NewReceivableInit): Receivable {
   const seen = new Set<string>();
   for (const c of init.components) {
     assertNonNegativePaise(c.payable, `component ${c.code}`);
-    if (seen.has(c.code)) throw new FinanceError('INVARIANT_VIOLATION', `duplicate component ${c.code}`);
+    if (seen.has(c.code))
+      throw new FinanceError('INVARIANT_VIOLATION', `duplicate component ${c.code}`);
     seen.add(c.code);
   }
   const base: Receivable = {
@@ -99,4 +109,7 @@ export function totalPending(receivables: readonly Receivable[]): Paise {
 
 /** Receivables that can still receive a payment. */
 export const isPayable = (r: Receivable): boolean =>
-  r.pending > 0 && r.paymentStatus !== 'VOID' && r.paymentStatus !== 'WAIVED' && r.paymentStatus !== 'TRANSFERRED';
+  r.pending > 0 &&
+  r.paymentStatus !== 'VOID' &&
+  r.paymentStatus !== 'WAIVED' &&
+  r.paymentStatus !== 'TRANSFERRED';
