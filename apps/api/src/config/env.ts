@@ -33,6 +33,27 @@ export const EnvSchema = z.object({
   S3_FORCE_PATH_STYLE: bool.default(false),
 
   SENTRY_DSN: z.string().optional(),
+
+  /** exact browser origins allowed to call the API, comma separated (e.g. https://fees.school.in) */
+  CORS_ORIGINS: z
+    .string()
+    .optional()
+    .transform((v) =>
+      (v ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().url('CORS_ORIGINS must be a comma-separated list of URLs'))),
+  /** first-run bootstrap (db:seed) */
+  SEED_ADMIN_EMAIL: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined),
+  SEED_ADMIN_PASSWORD: z
+    .string()
+    .optional()
+    .transform((v) => v || undefined),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

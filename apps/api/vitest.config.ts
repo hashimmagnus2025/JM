@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    // integration suites share ONE database and clear collections: never run them side by side
+    fileParallelism: !process.env.MONGO_URI,
     testTimeout: 30_000,
     hookTimeout: 120_000,
     coverage: {

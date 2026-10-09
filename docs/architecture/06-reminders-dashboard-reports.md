@@ -139,6 +139,6 @@ UPLOAD ──► STAGE (parse to import_rows) ──► VALIDATE (async) ──�
 
 `GET /search?q=` — one box (Cmd/Ctrl+K and header field): **student name, admission no., student ID, mobile, parent name, receipt number.**
 - Normalization: lowercase, diacritics stripped, whitespace collapsed; mobile → last 10 digits.
-- Strategy: classify the query (digits → mobile/ID/receipt; text → name tokens); run **anchored prefix** lookups on indexed fields (`searchTokens`, `mobileSearch`, exact `studentId/admissionNo/receiptNo`), merge & rank (exact ID > prefix > token-prefix), **limit 8 per group**, scope-filtered. Regex input is escaped; max length; min 2 chars; 250 ms debounce; in-flight cancelled.
+- Strategy: classify the query (digits → mobile/ID/receipt; text → name tokens); run **anchored prefix** lookups on indexed fields (`searchTokens`; parent mobile/name via the `parents` collection → `parentIds`; exact `studentId/admissionNo/receiptNo`), merge & rank (exact ID > prefix > token-prefix), **limit 8 per group**, scope-filtered. Regex input is escaped; max length; min 2 chars; 250 ms debounce; in-flight cancelled.
 - Result rows: avatar, name, class-division · year, admission no., outstanding chip; Enter → Student 360, `Ctrl+Enter` → Collect payment; receipt hit → receipt drawer. Recent searches kept locally.
 - Upgrade path (if >100k students or fuzzy matching is required): Atlas Search / OpenSearch behind the same endpoint.

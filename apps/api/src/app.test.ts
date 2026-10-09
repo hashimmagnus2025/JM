@@ -68,9 +68,10 @@ describe('HTTP shell', () => {
       .post('/healthz')
       .set('content-type', 'application/json')
       .send('{not json');
-    expect(bad.status).toBe(500);
+    // malformed JSON is the CLIENT's mistake: a clear 400, never a 500, and never the parser's internals
+    expect(bad.status).toBe(400);
     expect(JSON.stringify(bad.body)).not.toMatch(/at .*\.ts|SyntaxError|stack/);
-    expect(bad.body.error).toMatchObject({ code: 'INTERNAL_ERROR' });
+    expect(bad.body.error).toMatchObject({ code: 'INVALID_JSON' });
   });
 });
 
@@ -117,6 +118,19 @@ describe('environment validation (fail fast)', () => {
     expect(() => loadEnv({ ...validEnv, REDIS_URL: 'http://x' })).toThrow(/REDIS_URL/);
     expect(() => loadEnv({ ...validEnv, S3_BUCKET: undefined })).toThrow(/S3_BUCKET/);
     expect(() => loadEnv({ ...validEnv, PORT: '99999' })).toThrow(/PORT/);
+  });
+  it('parses CORS origins and seed settings; blank values count as unset', () => {
+    const env = loadEnv({
+      ...validEnv,
+      CORS_ORIGINS: 'https://a.test, https://b.test ,',
+      SEED_ADMIN_EMAIL: '  ',
+      SEED_ADMIN_PASSWORD: '',
+    });
+    expect(env.CORS_ORIGINS).toEqual(['https://a.test', 'https://b.test']);
+    expect(env.SEED_ADMIN_EMAIL).toBeUndefined();
+    expect(env.SEED_ADMIN_PASSWORD).toBeUndefined();
+    expect(loadEnv(validEnv).CORS_ORIGINS).toEqual([]);
+    expect(() => loadEnv({ ...validEnv, CORS_ORIGINS: 'not a url' })).toThrow(/CORS_ORIGINS/);
   });
   it('refuses the example secret in production', () => {
     expect(() =>

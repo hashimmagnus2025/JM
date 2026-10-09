@@ -24,11 +24,11 @@ const find = (
   );
 
 describe('collections', () => {
-  it('registers all 41 collections once', () => {
-    expect(MODEL_DEFS).toHaveLength(41);
-    expect(new Set(MODEL_DEFS.map((d) => d.collection)).size).toBe(41);
-    expect(new Set(MODEL_DEFS.map((d) => d.name)).size).toBe(41);
-    expect(Object.keys(M).filter((k) => /^[A-Z]/.test(k)).length).toBeGreaterThanOrEqual(41);
+  it('registers all 42 collections once', () => {
+    expect(MODEL_DEFS).toHaveLength(42);
+    expect(new Set(MODEL_DEFS.map((d) => d.collection)).size).toBe(42);
+    expect(new Set(MODEL_DEFS.map((d) => d.name)).size).toBe(42);
+    expect(Object.keys(M).filter((k) => /^[A-Z]/.test(k)).length).toBeGreaterThanOrEqual(42);
   });
   it('every business collection is tenant-scoped (institutionId) except platform singletons', () => {
     const exempt = new Set(['institutions', 'counters']);
@@ -97,6 +97,10 @@ describe('uniqueness constraints that prevent duplicates', () => {
   it('duplicate student identifiers', () => {
     unique('students', { institutionId: 1, studentId: 1 });
     unique('students', { institutionId: 1, admissionNo: 1 });
+  });
+  it('one parent record per mobile number; siblings are found through parentIds', () => {
+    unique('parents', { institutionId: 1, mobile: 1 });
+    expect(find('students', { institutionId: 1, parentIds: 1 })).toBeDefined();
   });
   it('BRC-B6: ONE current class teacher per division; a teacher is NOT limited to one division', () => {
     unique('teacher_assignments', { divisionId: 1, role: 1 }, { isCurrent: true });
@@ -229,7 +233,41 @@ describe('schema-level money validation', () => {
       'source',
     );
   });
-  it('a student needs at least one guardian; enums are enforced', async () => {
+  it('parents: mobile must be a normalized 10-digit number; siblings share ONE parent', async () => {
+    const inst = new mongoose.Types.ObjectId();
+    const parent = (over: Record<string, unknown> = {}) =>
+      new M.Parent({
+        institutionId: inst,
+        fullName: 'Suresh Sharma',
+        mobile: '9876543210',
+        ...over,
+      });
+    expect(await validate(parent())).toEqual([]);
+    expect(await validate(parent({ mobile: '98765' }))).toContain('mobile');
+    expect(await validate(parent({ mobile: '+919876543210' }))).toContain('mobile');
+    expect(await validate(parent({ altMobile: 'abc' }))).toContain('altMobile');
+    expect(await validate(parent({ status: 'DELETED' }))).toContain('status');
+
+    // two children point at the same parent document
+    const p = parent();
+    const child = (n: string) =>
+      new M.Student({
+        institutionId: inst,
+        studentId: n,
+        admissionNo: n,
+        firstName: n,
+        fullName: n,
+        dob: '2015-05-03',
+        gender: 'MALE',
+        categoryId: new mongoose.Types.ObjectId(),
+        admissionDate: '2026-04-01',
+        guardians: [{ parentId: p._id, relation: 'Father', isPrimary: true, isFeeContact: true }],
+        parentIds: [p._id],
+      });
+    expect(await validate(child('A'))).toEqual([]);
+    expect(String(child('A').parentIds[0])).toBe(String(child('B').parentIds[0]));
+  });
+  it('a student needs exactly one primary parent; enums are enforced', async () => {
     const base = {
       institutionId: new mongoose.Types.ObjectId(),
       studentId: 'S1',
@@ -241,21 +279,19 @@ describe('schema-level money validation', () => {
       categoryId: new mongoose.Types.ObjectId(),
       admissionDate: '2026-04-01',
     };
+    const pid = new mongoose.Types.ObjectId();
+    const link = (isPrimary: boolean) => ({ parentId: pid, relation: 'Father', isPrimary });
     expect(await validate(new M.Student({ ...base, guardians: [] }))).toContain('guardians');
+    expect(await validate(new M.Student({ ...base, guardians: [link(false)] }))).toContain(
+      'guardians',
+    );
     expect(
-      await validate(
-        new M.Student({
-          ...base,
-          guardians: [{ relation: 'Father', name: 'A', mobile: '9' }],
-          status: 'GONE',
-        }),
-      ),
+      await validate(new M.Student({ ...base, guardians: [link(true), link(true)] })),
+    ).toContain('guardians');
+    expect(
+      await validate(new M.Student({ ...base, guardians: [link(true)], status: 'GONE' })),
     ).toContain('status');
-    expect(
-      await validate(
-        new M.Student({ ...base, guardians: [{ relation: 'Father', name: 'A', mobile: '9' }] }),
-      ),
-    ).toEqual([]);
+    expect(await validate(new M.Student({ ...base, guardians: [link(true)] }))).toEqual([]);
   });
 });
 

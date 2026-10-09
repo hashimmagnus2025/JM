@@ -69,7 +69,7 @@ Rules: features don't import each other's internals (only each other's `index.ts
 ## 16. Development Phases
 
 ### 16.0 Scope & timeline risk (read first)
-The SOW commercial page states **45–60 working days**; the SOW + this brief (41 collections, reminders with providers, imports, reports in three formats, award-level UI, full test suite, hardening) is substantially larger. Recommended cut — agree before Phase 1:
+The SOW commercial page states **45–60 working days**; the SOW + this brief (42 collections, reminders with providers, imports, reports in three formats, award-level UI, full test suite, hardening) is substantially larger. Recommended cut — agree before Phase 1:
 
 | Release | Phases | Outcome |
 |---|---|---|

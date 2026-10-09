@@ -18,7 +18,7 @@
 
 | Relationship | Decision | Reason |
 |---|---|---|
-| Student → guardians (≤3) | **Embed** | Bounded, always read together, never queried independently. Contact numbers also flattened into `mobileSearch[]` for search. |
+| Student → parents | **Reference** (`parents` collection) + embedded link `{parentId, relation, isPrimary, isFeeContact}` | Decided by the client: siblings share one parent record (single place to change a mobile), family-wise outstanding, future parent portal. The link is embedded because it is bounded (≤3) and the relation belongs to the student–parent pair. |
 | Student → address | **Embed** | Value object. |
 | Student → enrollments | **Reference** (`student_enrollments`) | Unbounded over 15 years; queried by division/year for rosters. |
 | Fee structure → versions | **Reference** | Versions are immutable documents with their own lifecycle. |
@@ -122,8 +122,8 @@ Student {
   admissionNo: string,                  // client's number
   firstName, middleName?, lastName, fullName, searchTokens[] (lower, diacritics-stripped),
   dob, gender, categoryId→,             // category = *current*; enrollment/assignment keep snapshots
-  guardians: [{ relation, name, mobile, altMobile?, email?, occupation?, isPrimary, isFeeContact }],  // ≥1 primary
-  mobileSearch[]: last-10-digits of all guardian mobiles,
+  guardians: [{ parentId→Parent, relation, isPrimary, isFeeContact }],  // exactly 1 primary; relation belongs to the LINK
+  parentIds[]: flat copy of guardians[].parentId (siblings / family-wise outstanding),
   email?, address{…}, admissionDate, photoFileId?,
   status: ACTIVE | INACTIVE | TRANSFERRED | WITHDRAWN | PASSED_OUT | ARCHIVED, statusReason?, statusChangedAt?,
   current: { enrollmentId→, academicYearId→, classId→, divisionId→ },   // PROJECTION (rebuildable), updated in the enrollment txn
@@ -132,8 +132,17 @@ Student {
 }
 // **(institutionId,studentId)** · **(institutionId,admissionNo)**
 // (institutionId,status,'current.academicYearId','current.classId','current.divisionId')
-// (institutionId,searchTokens) multikey · (institutionId,mobileSearch) multikey
+// (institutionId,searchTokens) multikey · (institutionId,parentIds) multikey
 // (institutionId,dob,searchKeyNormalized) — duplicate-student heuristic
+
+Parent {                                // DECIDED (client): separate collection, one document per real person, shared by siblings
+  fullName, nameSearch, mobile (normalized last 10 digits), altMobile?, email?, occupation?, address{…},
+  status: ACTIVE | INACTIVE, userId?→User (reserved for the parent portal, not in release 1), version
+}
+// **(institutionId,mobile)** unique → admission finds "this parent already exists" · (institutionId,status,nameSearch)
+// sparse (institutionId,altMobile) · sparse (institutionId,email)
+// Mobile/email change in ONE place. Reminders still store a guardian snapshot (name/mobile/email at send time).
+// Search by mobile / parent name: Parent lookup → students by `parentIds`.
 
 StudentEnrollment {                     // ACADEMIC TRUTH (decision D7)
   studentId→, academicYearId→, classId→, divisionId→, rollNo?,
@@ -407,7 +416,7 @@ Institution 1──* AcademicYear 1──* Division *──1 Class
                      │                ├──* TeacherAssignment *──1 Teacher ──0..1 User
                      │                │         (effective-dated, one current CLASS_TEACHER per division)
                      │                │
-                     │                └──* StudentEnrollment *──1 Student 1──* embedded Guardians
+                     │                └──* StudentEnrollment *──1 Student *──* Parent (via guardians[])
                      │                         │   (one current per student-year)       │
                      │                         │                                        └─ *──1 StudentCategory
                      │                         ▼

@@ -13,14 +13,14 @@
 | Academic rules (pure) | `apps/api/src/domain/academic/teacher-assignment.ts` | BRC-B6 |
 | Billing (isolated) | `apps/api/src/domain/billing/active-students.ts` | BRC-K1; cannot import the fee engine (lint + test enforced) |
 | Posting kernel | `apps/api/src/modules/payments/*` | transactional payment posting + reversal over a `LedgerStore` port; in-memory model + MongoDB adapter |
-| Persistence | `apps/api/src/db/*` | 41 Mongoose models, indexes, DB-level `$expr` validators, migration 001 |
+| Persistence | `apps/api/src/db/*` | 42 Mongoose models (incl. `parents`, added after Phase 1 by client decision), indexes, DB-level `$expr` validators, migration 001 |
 | HTTP shell | `apps/api/src/app.ts`, `server.ts`, `worker.ts` | request id, structured logs with redaction, Helmet, `/healthz` + `/readyz`, safe errors; env validated at boot |
 | DevOps | `ops/docker/*`, `.github/workflows/ci.yml`, `.env.example` | Dockerfile (multi-stage, non-root), dev compose (Mongo **replica set**, Redis, MinIO), CI (lint, format, types, tests+coverage, build, audit, **real-Mongo integration job**, docker build) |
 | Docs | `docs/architecture/11, 12` + patches to 00–10 | decision register with BRC mapping |
 
-## 12.2 Schema summary (41 collections)
+## 12.2 Schema summary (42 collections; `parents` added after Phase 1)
 
-Platform 5 (`institutions`, `system_settings`, `counters`, `files`, `idempotency_keys`) · academic 4 · teachers 2 · students 3 · fee configuration 5 · **ledger 10** (`receivables`, `opening_balances`, `adjustments`, `payments`, `payment_allocations`, `payment_reversals`, `receipts`, `student_year_balances`, `daily_snapshots`, `collection_targets`) · communication 5 · identity/audit/bulk 7.
+Platform 5 (`institutions`, `system_settings`, `counters`, `files`, `idempotency_keys`) · academic 4 · teachers 2 · students 4 (incl. `parents`) · fee configuration 5 · **ledger 10** (`receivables`, `opening_balances`, `adjustments`, `payments`, `payment_allocations`, `payment_reversals`, `receipts`, `student_year_balances`, `daily_snapshots`, `collection_targets`) · communication 5 · identity/audit/bulk 7.
 Money fields are integer paise (schema validator); dates are `YYYY-MM-DD` strings; `institutionId` on every business collection; `autoIndex`/`autoCreate` off (migration owns structure); no `__v`.
 
 ## 12.3 Index summary

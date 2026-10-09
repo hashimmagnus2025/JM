@@ -51,7 +51,7 @@ jobs:
       - name: Integration tests
         env:
           MONGO_URI: mongodb://localhost:27017/sfm_ci?replicaSet=rs0&directConnection=true
-        run: pnpm --filter @sfm/api exec vitest run src/modules/payments/mongo-ledger-store.integration.test.ts
+        run: pnpm --filter @sfm/api exec vitest run integration
 
   docker:
     name: Docker image builds

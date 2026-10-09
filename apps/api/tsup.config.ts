@@ -1,7 +1,8 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/server.ts', 'src/worker.ts'],
+  // db/migrate + db/seed are shipped too: `node dist/db/migrate.js`, `node dist/db/seed.js` in production
+  entry: ['src/server.ts', 'src/worker.ts', 'src/db/migrate.ts', 'src/db/seed.ts'],
   format: ['esm'],
   target: 'node22',
   platform: 'node',

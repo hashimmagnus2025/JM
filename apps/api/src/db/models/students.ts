@@ -10,19 +10,56 @@ import {
   tenant,
 } from '../schema-helpers';
 
-const guardian = new Schema(
+/**
+ * A student's link to a Parent. The relation (father / mother / guardian) belongs to the LINK, not to
+ * the parent: the same person can be the father of one student and the guardian of another.
+ */
+const guardianLink = new Schema(
   {
-    relation: { type: String, required: true },
-    name: { type: String, required: true, trim: true },
-    mobile: { type: String, required: true, trim: true },
-    altMobile: String,
-    email: String,
-    occupation: String,
+    parentId: { type: Schema.Types.ObjectId, ref: 'Parent', required: true },
+    relation: { type: String, required: true, trim: true },
     isPrimary: { type: Boolean, default: false },
     isFeeContact: { type: Boolean, default: false },
   },
   { _id: false },
 );
+
+/**
+ * One document per real person, shared by all their children (siblings). Changing a mobile number or
+ * email happens in ONE place. Also the future login identity of the parent portal (SOW §52).
+ */
+export const Parent = defineModel({
+  name: 'Parent',
+  collection: 'parents',
+  fields: {
+    ...tenant,
+    fullName: str(),
+    nameSearch: str(false),
+    /** normalized: last 10 digits; unique per institution → "this parent already exists" at admission */
+    mobile: str(true, { match: /^\d{10}$/ }),
+    altMobile: str(false, { match: /^\d{10}$/ }),
+    email: str(false, { lowercase: true }),
+    occupation: str(false),
+    address: {
+      line1: str(false),
+      line2: str(false),
+      city: str(false),
+      state: str(false),
+      pincode: str(false),
+    },
+    status: enumStr(['ACTIVE', 'INACTIVE'], true, 'ACTIVE'),
+    /** reserved for the parent portal (not in release 1) */
+    userId: oid('User', false),
+    version: { type: Number, default: 0 },
+    createdBy: oid('User', false),
+  },
+  indexes: [
+    [{ institutionId: 1, mobile: 1 }, { unique: true }],
+    [{ institutionId: 1, status: 1, nameSearch: 1 }],
+    [{ institutionId: 1, altMobile: 1 }, { sparse: true }],
+    [{ institutionId: 1, email: 1 }, { sparse: true }],
+  ],
+});
 
 export const Student = defineModel({
   name: 'Student',
@@ -40,13 +77,17 @@ export const Student = defineModel({
     gender: enumStr(['MALE', 'FEMALE', 'OTHER']),
     categoryId: oid('StudentCategory'),
     guardians: {
-      type: [guardian],
-      validate: {
-        validator: (g: unknown[]) => g.length >= 1,
-        message: 'at least one guardian is required',
-      },
+      type: [guardianLink],
+      validate: [
+        { validator: (g: unknown[]) => g.length >= 1, message: 'at least one parent is required' },
+        {
+          validator: (g: { isPrimary?: boolean }[]) => g.filter((x) => x.isPrimary).length === 1,
+          message: 'exactly one primary parent is required',
+        },
+      ],
     },
-    mobileSearch: { type: [String], default: [] },
+    /** flat copy of guardians[].parentId for family queries (siblings, family-wise outstanding) */
+    parentIds: { type: [Schema.Types.ObjectId], default: [] },
     email: str(false),
     address: {
       line1: str(false),
@@ -88,7 +129,7 @@ export const Student = defineModel({
       },
     ],
     [{ institutionId: 1, searchTokens: 1 }],
-    [{ institutionId: 1, mobileSearch: 1 }],
+    [{ institutionId: 1, parentIds: 1 }],
     [{ institutionId: 1, dob: 1, fullName: 1 }],
   ],
 });

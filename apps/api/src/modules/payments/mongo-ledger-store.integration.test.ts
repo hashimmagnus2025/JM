@@ -95,9 +95,9 @@ describe.skipIf(!uri)('MongoDB integration', () => {
   postingScenarios('real MongoDB', mongoHarness);
 
   describe('migration', () => {
-    it('is idempotent and creates all 41 collections with their indexes', async () => {
+    it('is idempotent and creates all 42 collections with their indexes', async () => {
       const r = await up(mongoose.connection);
-      expect(r.collections).toBe(41);
+      expect(r.collections).toBe(42);
       const names = new Set((await mongoose.connection.listCollections()).map((c) => c.name));
       for (const c of [
         'receivables',

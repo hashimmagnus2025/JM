@@ -163,6 +163,7 @@ export const Role = defineModel({
     permissions: { type: [String], default: [] },
     dataScope: enumStr(['ALL', 'OWN_DIVISIONS'], true, 'ALL'),
     isSystem: bool(false),
+    isActive: bool(true),
     version: { type: Number, default: 0 },
   },
   indexes: [[{ institutionId: 1, key: 1 }, { unique: true }]],
@@ -214,10 +215,20 @@ export const AuditLog = defineModel({
     userAgent: str(false),
     requestId: str(false),
     correlationId: str(false),
+    /** position in the tamper-evident chain; the unique index lets exactly one concurrent writer take each number */
+    seq: { type: Number, min: 1 },
     prevHash: str(false),
     hash: str(false),
   },
   indexes: [
+    [
+      { institutionId: 1, seq: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { seq: { $type: 'number' } },
+        name: 'audit_chain_seq',
+      },
+    ],
     [{ entityType: 1, entityId: 1, at: -1 }],
     [{ studentId: 1, at: -1 }, { sparse: true }],
     [{ userId: 1, at: -1 }],
