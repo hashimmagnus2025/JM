@@ -8,3 +8,7 @@ coverage/
 .DS_Store
 .turbo/
 .vitest-cache/
+
+e2e/.e2e-credentials.json
+test-results/
+playwright-report/
