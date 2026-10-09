@@ -124,7 +124,10 @@ class MongoTx implements LedgerTx {
   async loadReceivables(studentId: string): Promise<Receivable[]> {
     const docs = await this.m
       .Receivable!.find(
-        this.scope({ studentId: this.id(studentId), paymentStatus: { $ne: 'VOID' } }),
+        this.scope({
+          studentId: this.id(studentId),
+          paymentStatus: mongoose.trusted({ $ne: 'VOID' }),
+        }),
       )
       .session(this.session)
       .lean();
@@ -132,7 +135,7 @@ class MongoTx implements LedgerTx {
   }
   async loadReceivablesByIds(ids: readonly string[]): Promise<Receivable[]> {
     const docs = await this.m
-      .Receivable!.find(this.scope({ _id: { $in: ids.map(this.id) } }))
+      .Receivable!.find(this.scope({ _id: mongoose.trusted({ $in: ids.map(this.id) }) }))
       .session(this.session)
       .lean();
     const byId = new Map<string, Receivable>(
