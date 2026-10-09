@@ -12,8 +12,11 @@ packages/ui      design tokens ("Ledger"), WCAG-tested
 ops/docker       Dockerfile + local Mongo-replica-set/Redis/MinIO stack
 ```
 
-```bash
-pnpm install && pnpm check
-```
+## Chalane ke liye (3 steps)
 
-Frontend, e2e and how to run everything: [docs/architecture/15-frontend-foundation.md](docs/architecture/15-frontend-foundation.md)
+1. `npm install`-jaisa kaam ek baar: `pnpm install`  (pnpm = npm ka monorepo version, PC par pehle se hai)
+2. Pehli baar sirf: `npm run db:migrate` phir `npm run db:seed` (`.env` mein `SEED_ADMIN_EMAIL` set karke)
+3. Roz: **`npm run dev`** — API http://localhost:4100 aur website http://localhost:5173 dono ek saath chalte hain.
+
+Tests: `npm run check` · Browser tests: `npm run e2e` (throwaway DB chahiye) · Details: docs/architecture/15-frontend-foundation.md
+Docker files (`ops/`) sirf baad ke deployment ke liye hain; local chalane ke liye zaroori nahi.

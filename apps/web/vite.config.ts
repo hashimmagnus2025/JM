@@ -11,7 +11,7 @@ export default defineConfig({
     // same-origin API in development: the SameSite=Strict refresh cookie then works exactly as in production
     proxy: {
       '/api': {
-        target: process.env.API_PROXY_TARGET ?? 'http://localhost:4000',
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:4100',
         changeOrigin: false,
       },
     },

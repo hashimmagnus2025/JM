@@ -104,7 +104,7 @@ describe('environment validation (fail fast)', () => {
   it('accepts a valid configuration and applies defaults', () => {
     const env = loadEnv(validEnv);
     expect(env).toMatchObject({
-      PORT: 4000,
+      PORT: 4100,
       APP_TIMEZONE: 'Asia/Kolkata',
       JWT_ACCESS_TTL_SECONDS: 900,
       S3_FORCE_PATH_STYLE: false,

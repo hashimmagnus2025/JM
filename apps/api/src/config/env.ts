@@ -8,7 +8,7 @@ const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
 
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+  PORT: z.coerce.number().int().min(1).max(65535).default(4100),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   APP_TIMEZONE: z.string().default('Asia/Kolkata'),
 
