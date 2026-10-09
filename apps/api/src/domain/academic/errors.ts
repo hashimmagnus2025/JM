@@ -5,7 +5,13 @@ export type AcademicErrorCode =
   | 'TEACHER_ALREADY_ASSIGNED'
   | 'ASSIGNMENT_NOT_CURRENT'
   | 'ASSIGNMENT_CHANGE_INVALID'
-  | 'ASSIGNMENT_YEAR_MISMATCH';
+  | 'ASSIGNMENT_YEAR_MISMATCH'
+  | 'YEAR_INVALID'
+  | 'YEAR_OVERLAP'
+  | 'YEAR_STATUS_INVALID'
+  | 'YEAR_LOCKED'
+  | 'YEAR_NOT_FOUND'
+  | 'YEAR_CLOSED';
 
 export class AcademicError extends Error {
   constructor(

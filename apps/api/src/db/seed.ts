@@ -26,6 +26,7 @@ export interface SeedResult {
   institutionId: string;
   rolesCreated: string[];
   rolesUpdated: string[];
+  categoriesCreated: string[];
   admin: { email: string; created: boolean; temporaryPassword?: string };
 }
 
@@ -91,6 +92,20 @@ export async function seedIdentity(conn: Connection, opts: SeedOptions): Promise
     }
   }
 
+  // every student needs a category to select a fee structure: start with "General" (more are added in the UI)
+  const Category = conn.model('StudentCategory') as any;
+  const categoriesCreated: string[] = [];
+  if ((await Category.countDocuments({ institutionId: inst._id })) === 0) {
+    await Category.create({
+      institutionId: inst._id,
+      code: 'GENERAL',
+      name: 'General',
+      sequence: 1,
+      isActive: true,
+    });
+    categoriesCreated.push('GENERAL');
+  }
+
   const email = opts.adminEmail.trim().toLowerCase();
   const superRole = (await roles.findByKey('SUPER_ADMIN'))!;
   const existingAdmin = await users.findByEmail(email);
@@ -99,6 +114,7 @@ export async function seedIdentity(conn: Connection, opts: SeedOptions): Promise
       institutionId,
       rolesCreated: created,
       rolesUpdated: updated,
+      categoriesCreated,
       admin: { email, created: false },
     };
 
@@ -118,6 +134,7 @@ export async function seedIdentity(conn: Connection, opts: SeedOptions): Promise
     institutionId,
     rolesCreated: created,
     rolesUpdated: updated,
+    categoriesCreated,
     admin: { email, created: true, ...(given ? {} : { temporaryPassword: password }) },
   };
 }

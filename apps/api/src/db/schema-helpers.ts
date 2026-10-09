@@ -54,6 +54,8 @@ export interface ModelDef {
   fields: Record<string, unknown>;
   indexes?: IndexSpec[];
   timestamps?: boolean;
+  /** keep empty objects as they are (default: Mongoose silently drops them) — required where data is hashed */
+  minimize?: boolean;
   /** MongoDB collection validator ($expr / $jsonSchema), applied by the migration */
   validator?: Record<string, unknown>;
 }
@@ -70,6 +72,7 @@ export function defineModel(def: ModelDef) {
     autoIndex: false, // indexes are created by migrations, never implicitly (production safety)
     autoCreate: false,
     suppressReservedKeysWarning: true,
+    minimize: def.minimize ?? true,
   });
   for (const [spec, options] of def.indexes ?? []) schema.index(spec, options ?? {});
   MODEL_DEFS.push(def);

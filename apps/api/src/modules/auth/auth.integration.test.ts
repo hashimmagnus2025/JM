@@ -1,8 +1,9 @@
-import { SYSTEM_ROLES, SystemClock } from '@sfm/shared';
+import { SYSTEM_ROLES } from '@sfm/shared';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../app';
+import { composeApi } from '../../compose';
 import { createLogger } from '../../config/logger';
 import { connectMongo, disconnectMongo } from '../../db/connection';
 import { up } from '../../db/migrations/001-initial';
@@ -10,9 +11,6 @@ import { seedIdentity } from '../../db/seed';
 import { TEST_SECRET, buildAuthHarness, testHasher } from '../../testing/auth-harness';
 import { GENESIS_HASH, chain, verifyChain } from '../audit/audit-chain';
 import { AuditService } from '../audit/audit.service';
-import { IdentityService } from '../identity/identity.service';
-import { AuthService, DEFAULT_AUTH_CONFIG } from './auth.service';
-import { PrincipalResolver } from './principal';
 import { authScenarios } from './auth.scenarios';
 import { MongoAuditStore, MongoRoleRepo, MongoSessionRepo, MongoUserRepo } from './mongo-repos';
 
@@ -176,35 +174,11 @@ describe.skipIf(!uri)('MongoDB integration — auth', () => {
       // the whole stack: Mongo repos + services + Express
       const id = first.institutionId;
       const c = mongoose.connection;
-      const users = new MongoUserRepo(c, id);
       const roles = new MongoRoleRepo(c, id);
-      const sessions = new MongoSessionRepo(c, id);
-      const clock = new SystemClock();
-      const audit = new AuditService(new MongoAuditStore(c, id));
-      const principals = new PrincipalResolver(users, roles, sessions, clock);
-      const auth = new AuthService({
-        users,
-        roles,
-        sessions,
-        hasher,
-        audit,
-        clock,
-        principals,
-        config: { ...DEFAULT_AUTH_CONFIG, jwtSecret: TEST_SECRET },
-      });
-      const identity = new IdentityService({
-        users,
-        roles,
-        sessions,
-        hasher,
-        audit,
-        clock,
-        principals,
-      });
       const app = createApp({
         logger: createLogger('silent'),
         readiness: {},
-        api: { auth, identity, routes: { secureCookies: false } },
+        api: composeApi(c, id, { jwtSecret: TEST_SECRET, secureCookies: false, hasher }),
       });
 
       const l1 = await request(app)

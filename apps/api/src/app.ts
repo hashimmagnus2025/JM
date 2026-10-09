@@ -10,10 +10,12 @@ import { authRoutes, type AuthRouteOptions } from './modules/auth/auth.routes';
 import type { AuthService } from './modules/auth/auth.service';
 import { identityRoutes } from './modules/identity/identity.routes';
 import type { IdentityService } from './modules/identity/identity.service';
+import { setupRoutes, type SetupServices } from './modules/setup/setup.routes';
 
 export interface ApiModules {
   auth: AuthService;
   identity: IdentityService;
+  setup: SetupServices;
   routes: AuthRouteOptions;
   /** exact origins allowed to call the API from a browser (credentials are allowed for these only) */
   corsOrigins?: string[];
@@ -81,6 +83,7 @@ export function createApp(deps: AppDeps): Express {
   if (deps.api) {
     app.use('/api/v1/auth', authRoutes(deps.api.auth, deps.api.routes));
     app.use('/api/v1', identityRoutes(deps.api.auth, deps.api.identity));
+    app.use('/api/v1', setupRoutes(deps.api.auth, deps.api.setup));
   }
 
   app.use((req, res) => {

@@ -197,6 +197,8 @@ export const AuditLog = defineModel({
   name: 'AuditLog',
   collection: 'audit_logs',
   timestamps: false,
+  // entries are HASHED: Mongoose must not drop empty objects ({}) or the stored data would no longer match its hash
+  minimize: false,
   fields: {
     ...tenant,
     at: { type: Date, required: true, immutable: true },

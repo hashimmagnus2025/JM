@@ -27,6 +27,8 @@ export const PERMISSION_DEFS = [
   def('Academic', 'academicYear.manage', 'Manage academic years'),
   def('Academic', 'academicYear.close', 'Close an academic year'),
   def('Academic', 'academicYear.override', 'Post into a closed academic year'),
+  def('Academic', 'studentCategory.view', 'View student categories'),
+  def('Academic', 'studentCategory.manage', 'Manage student categories'),
   def('Academic', 'class.view', 'View classes'),
   def('Academic', 'class.manage', 'Manage classes'),
   def('Academic', 'division.view', 'View divisions'),
@@ -230,6 +232,7 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
     permissions: [
       ...ACADEMIC_VIEW,
       'academicYear.manage',
+      'studentCategory.manage',
       'class.manage',
       'division.manage',
       'teacher.create',
