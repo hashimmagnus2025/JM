@@ -9,7 +9,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web -c cyan,magenta \"pnpm --filter @sfm/api dev\" \"pnpm --filter @sfm/web dev\"",
+    "dev": "node api.js && concurrently -k -n api,web -c cyan,magenta \"pnpm --filter @sfm/api dev\" \"pnpm --filter @sfm/web dev\"",
     "db:migrate": "pnpm --filter @sfm/api db:migrate",
     "db:seed": "pnpm --filter @sfm/api db:seed",
     "lint": "eslint .",
@@ -18,7 +18,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "test:coverage": "pnpm -r --if-present test:coverage",
-    "build": "pnpm -r --if-present build",
+    "build": "node api.js && pnpm -r --if-present build",
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "mock": "pnpm --filter @sfm/web dev:mock",
