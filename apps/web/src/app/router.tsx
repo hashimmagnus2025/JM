@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
 import { useAuth, usePermission } from '../features/auth/auth';
 import { AppShell } from '../layouts/AppShell';
 import { ErrorState } from '../components/ui';
+import { FINANCE_UI } from '../lib/features';
 
 // route-level code splitting: each screen is downloaded only when it is opened
 const LoginPage = lazy(() => import('../pages/LoginPage'));
@@ -16,6 +17,20 @@ const TeachersPage = lazy(() => import('../pages/TeachersPage'));
 const CategoriesPage = lazy(() => import('../pages/CategoriesPage'));
 const InstitutionPage = lazy(() => import('../pages/InstitutionPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
+const StudentsPage = lazy(() => import('../pages/StudentsPage'));
+const StudentProfilePage = lazy(() => import('../pages/StudentProfilePage'));
+const AddStudentPage = lazy(() => import('../pages/AddStudentPage'));
+const PromotionPage = lazy(() => import('../pages/PromotionPage'));
+const FeeStructuresPage = lazy(() => import('../pages/FeeStructuresPage'));
+const CollectFeePage = lazy(() => import('../pages/CollectFeePage'));
+const ReceiptsPage = lazy(() => import('../pages/ReceiptsPage'));
+const AdjustmentsPage = lazy(() => import('../pages/AdjustmentsPage'));
+const OutstandingPage = lazy(() => import('../pages/OutstandingPage'));
+const RemindersPage = lazy(() => import('../pages/RemindersPage'));
+const TargetsPage = lazy(() => import('../pages/TargetsPage'));
+const ReportsPage = lazy(() => import('../pages/ReportsPage'));
+const UsersPage = lazy(() => import('../pages/UsersPage'));
+const AuditPage = lazy(() => import('../pages/AuditPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 const Busy = () => (
@@ -59,6 +74,30 @@ function Guard({ permission, children }: { permission: string; children: ReactNo
     );
   return <Lazy>{children}</Lazy>;
 }
+
+/** screens of the finance modules (students, fees, receivables, insight): on when their backend is ready, or in mock mode */
+const guarded = (path: string, permission: string, page: ReactNode) => ({
+  path,
+  element: <Guard permission={permission}>{page}</Guard>,
+});
+const financeRoutes = FINANCE_UI
+  ? [
+      guarded('/students', 'student.view', <StudentsPage />),
+      guarded('/students/new', 'student.create', <AddStudentPage />),
+      guarded('/students/promotion', 'promotion.run', <PromotionPage />),
+      guarded('/students/:id', 'student.view', <StudentProfilePage />),
+      guarded('/fees/structures', 'feeStructure.view', <FeeStructuresPage />),
+      guarded('/fees/collect', 'payment.collect', <CollectFeePage />),
+      guarded('/fees/receipts', 'receipt.view', <ReceiptsPage />),
+      guarded('/fees/adjustments', 'adjustment.view', <AdjustmentsPage />),
+      guarded('/receivables/outstanding', 'outstanding.view', <OutstandingPage />),
+      guarded('/receivables/reminders', 'reminder.view', <RemindersPage />),
+      guarded('/insights/targets', 'dashboard.view', <TargetsPage />),
+      guarded('/insights/reports', 'report.view', <ReportsPage />),
+      guarded('/administration/users', 'user.view', <UsersPage />),
+      guarded('/administration/audit', 'audit.view', <AuditPage />),
+    ]
+  : [];
 
 export const router = createBrowserRouter([
   {
@@ -142,6 +181,7 @@ export const router = createBrowserRouter([
           </Guard>
         ),
       },
+      ...financeRoutes,
       {
         path: '/change-password',
         element: (

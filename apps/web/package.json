@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "dev:mock": "vite --mode mock --port 5190",
+    "build:mock": "tsc -p tsconfig.json && vite build --mode mock"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

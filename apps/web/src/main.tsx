@@ -28,6 +28,12 @@ try {
   /* storage blocked */
 }
 
+// mock mode: answer /api/v1 in the browser until the real backend is connected (never part of a normal build)
+if (import.meta.env.MODE === 'mock') {
+  const { installMockApi } = await import('./mock/install');
+  installMockApi();
+}
+
 void bootSession();
 
 createRoot(document.getElementById('root') as HTMLElement).render(

@@ -63,3 +63,19 @@ body {
 .page-enter {
   animation: fade-up var(--motion-slow) var(--motion-easing);
 }
+
+/* printing a receipt prints only the receipt */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: fixed;
+    inset: 0;
+    border: 0;
+  }
+}

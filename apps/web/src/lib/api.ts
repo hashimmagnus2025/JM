@@ -110,12 +110,14 @@ export interface RequestOptions {
   /** false for login style calls that must not trigger a silent renewal */
   auth?: boolean;
   signal?: AbortSignal;
+  /** extra headers, e.g. Idempotency-Key on money-moving requests */
+  headers?: Record<string, string>;
 }
 
 const RENEWABLE = new Set(['TOKEN_EXPIRED', 'TOKEN_INVALID', 'UNAUTHENTICATED', 'SESSION_ENDED']);
 
 export async function request<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, auth = true, signal } = opts;
+  const { method = 'GET', body, query, auth = true, signal, headers = {} } = opts;
   const qs = query
     ? new URLSearchParams(
         Object.entries(query)
@@ -132,6 +134,7 @@ export async function request<T = unknown>(path: string, opts: RequestOptions = 
       credentials: 'include',
       ...(signal ? { signal } : {}),
       headers: {
+        ...headers,
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(auth && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
@@ -179,12 +182,22 @@ export async function get<T>(path: string, query?: RequestOptions['query']): Pro
   return r.data;
 }
 
+/** a list with its paging information (meta.total) */
+export function getPage<T>(path: string, query?: RequestOptions['query']): Promise<Envelope<T[]>> {
+  return request<Envelope<T[]>>(path, { ...(query ? { query } : {}) });
+}
+
 export function send<T>(
   method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
+  headers?: Record<string, string>,
 ): Promise<Envelope<T>> {
-  return request<Envelope<T>>(path, { method, ...(body !== undefined ? { body } : {}) });
+  return request<Envelope<T>>(path, {
+    method,
+    ...(body !== undefined ? { body } : {}),
+    ...(headers ? { headers } : {}),
+  });
 }
 
 export async function login(email: string, password: string): Promise<SessionData> {

@@ -2,6 +2,8 @@ import { ArrowRight, Check, Circle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge, Card, CardHeader, PageHeader, Skeleton } from '../components/ui';
 import { useAuth, useCan } from '../features/auth/auth';
+import { ManagementDashboard } from '../features/dashboard/ManagementDashboard';
+import { FINANCE_UI } from '../lib/features';
 import { useCategories, useCurrentYear, useInstitution } from '../features/setup/api';
 import { formatRange } from '../lib/format';
 
@@ -14,7 +16,7 @@ interface Step {
   visible: boolean;
 }
 
-/** The real management dashboard (collections, outstanding, trends) arrives with the finance screens. Until then this is the guided setup checklist. */
+/** Management dashboard (when the finance screens are on) above the guided setup checklist, which hides once setup is complete. */
 export default function DashboardPage() {
   const principal = useAuth((s) => s.principal);
   const can = useCan();
@@ -63,6 +65,8 @@ export default function DashboardPage() {
     },
   ].filter((s) => s.visible);
 
+  const setupDone =
+    FINANCE_UI && steps.length > 0 && steps.every((x) => x.done === true || x.id === 'set');
   const first = principal?.name.split(' ')[0] ?? '';
 
   return (
@@ -72,59 +76,65 @@ export default function DashboardPage() {
         description="Here is where to start. Classes, students, fees and collections appear in the menu as they are set up."
       />
 
-      {year.data && (
-        <p className="mb-6 text-sm text-muted">
-          Current academic year: <strong className="text-ink">{year.data.label}</strong> ·{' '}
-          {formatRange(year.data.startDate, year.data.endDate)}
-        </p>
-      )}
+      {FINANCE_UI && can('dashboard.view') && <ManagementDashboard />}
 
-      <Card>
-        <CardHeader
-          title="Set up your school"
-          description="Complete these steps once, in any order."
-        />
-        {institution.isPending && categories.isPending ? (
-          <div className="space-y-3 p-5">
-            <Skeleton className="h-12" />
-            <Skeleton className="h-12" />
-            <Skeleton className="h-12" />
-          </div>
-        ) : (
-          <ol className="divide-y divide-line">
-            {steps.map((s, i) => (
-              <li key={s.id}>
-                <Link
-                  to={s.to}
-                  className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-2"
-                >
-                  <span
-                    className={
-                      s.done
-                        ? 'grid size-8 shrink-0 place-items-center rounded-full bg-success-bg text-success'
-                        : 'grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-muted'
-                    }
-                    aria-hidden
-                  >
-                    {s.done ? <Check className="size-4" /> : <Circle className="size-3" />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium text-ink">
-                      {i + 1}. {s.title}
-                    </span>
-                    <span className="block text-[13px] text-muted">{s.hint}</span>
-                  </span>
-                  {s.done === true && <Badge tone="success">Done</Badge>}
-                  <ArrowRight
-                    className="size-4 text-muted transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </Link>
-              </li>
-            ))}
-          </ol>
-        )}
-      </Card>
+      {!setupDone && (
+        <>
+          {year.data && (
+            <p className="mb-6 text-sm text-muted">
+              Current academic year: <strong className="text-ink">{year.data.label}</strong> ·{' '}
+              {formatRange(year.data.startDate, year.data.endDate)}
+            </p>
+          )}
+
+          <Card>
+            <CardHeader
+              title="Set up your school"
+              description="Complete these steps once, in any order."
+            />
+            {institution.isPending && categories.isPending ? (
+              <div className="space-y-3 p-5">
+                <Skeleton className="h-12" />
+                <Skeleton className="h-12" />
+                <Skeleton className="h-12" />
+              </div>
+            ) : (
+              <ol className="divide-y divide-line">
+                {steps.map((s, i) => (
+                  <li key={s.id}>
+                    <Link
+                      to={s.to}
+                      className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-2"
+                    >
+                      <span
+                        className={
+                          s.done
+                            ? 'grid size-8 shrink-0 place-items-center rounded-full bg-success-bg text-success'
+                            : 'grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-muted'
+                        }
+                        aria-hidden
+                      >
+                        {s.done ? <Check className="size-4" /> : <Circle className="size-3" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium text-ink">
+                          {i + 1}. {s.title}
+                        </span>
+                        <span className="block text-[13px] text-muted">{s.hint}</span>
+                      </span>
+                      {s.done === true && <Badge tone="success">Done</Badge>}
+                      <ArrowRight
+                        className="size-4 text-muted transition-transform group-hover:translate-x-0.5"
+                        aria-hidden
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        </>
+      )}
     </>
   );
 }

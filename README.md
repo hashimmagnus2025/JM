@@ -18,5 +18,7 @@ ops/docker       Dockerfile + local Mongo-replica-set/Redis/MinIO stack
 2. Pehli baar sirf: `npm run db:migrate` phir `npm run db:seed` (`.env` mein `SEED_ADMIN_EMAIL` set karke)
 3. Roz: **`npm run dev`** — API http://localhost:4100 aur website http://localhost:5173 dono ek saath chalte hain.
 
+**Client ko screens dikhane ke liye (backend/database ke bina): `npm run mock`** — http://localhost:5190. Sample data hai (1,800+ students, payments, receipts, dues), kuch save nahi hota, upar "View as" se role badal sakte hain. Backend ready hone par screens waise hi rahengi, sirf mock hatega (`apps/web/src/mock`). Browser check: `npm run e2e:mock`.
+
 Tests: `npm run check` · Browser tests: `npm run e2e` (throwaway DB chahiye) · Details: docs/architecture/15-frontend-foundation.md
 Docker files (`ops/`) sirf baad ke deployment ke liye hain; local chalane ke liye zaroori nahi.

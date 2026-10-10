@@ -20,7 +20,9 @@
     "test:coverage": "pnpm -r --if-present test:coverage",
     "build": "pnpm -r --if-present build",
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "mock": "pnpm --filter @sfm/web dev:mock",
+    "e2e:mock": "playwright test -c e2e-mock/playwright.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

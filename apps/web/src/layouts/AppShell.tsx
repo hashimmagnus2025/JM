@@ -1,7 +1,19 @@
 import * as RMenu from '@radix-ui/react-dropdown-menu';
 import {
+  BadgeIndianRupee,
+  Bell,
   Building2,
   CalendarRange,
+  ClipboardList,
+  FileBarChart,
+  Percent,
+  Receipt,
+  ScrollText,
+  ShieldCheck,
+  TrendingUp,
+  UserPlus,
+  Users,
+  Wallet,
   ChevronDown,
   GraduationCap,
   KeyRound,
@@ -17,11 +29,12 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { signOut, useAuth, useCan } from '../features/auth/auth';
 import { Button } from '../components/ui';
 import { cn, initials } from '../lib/format';
+import { FINANCE_UI } from '../lib/features';
 
 interface NavItem {
   to: string;
@@ -29,9 +42,12 @@ interface NavItem {
   icon: LucideIcon;
   permission?: string;
   end?: boolean;
+  finance?: boolean;
 }
 interface NavGroup {
   title?: string;
+  /** shown only when the finance screens are on */
+  finance?: boolean;
   items: NavItem[];
 }
 
@@ -74,6 +90,60 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    title: 'Students',
+    finance: true,
+    items: [
+      { to: '/students', label: 'Students', icon: Users, permission: 'student.view', end: true },
+      { to: '/students/new', label: 'New student', icon: UserPlus, permission: 'student.create' },
+      {
+        to: '/students/promotion',
+        label: 'Promotion',
+        icon: TrendingUp,
+        permission: 'promotion.run',
+      },
+    ],
+  },
+  {
+    title: 'Fees',
+    finance: true,
+    items: [
+      { to: '/fees/collect', label: 'Collect fee', icon: Wallet, permission: 'payment.collect' },
+      {
+        to: '/fees/receipts',
+        label: 'Receipts & payments',
+        icon: Receipt,
+        permission: 'receipt.view',
+      },
+      {
+        to: '/fees/structures',
+        label: 'Fee structures',
+        icon: ClipboardList,
+        permission: 'feeStructure.view',
+      },
+      { to: '/fees/adjustments', label: 'Discounts', icon: Percent, permission: 'adjustment.view' },
+    ],
+  },
+  {
+    title: 'Receivables',
+    finance: true,
+    items: [
+      {
+        to: '/receivables/outstanding',
+        label: 'Outstanding',
+        icon: BadgeIndianRupee,
+        permission: 'outstanding.view',
+      },
+      { to: '/receivables/reminders', label: 'Reminders', icon: Bell, permission: 'reminder.view' },
+      {
+        to: '/insights/targets',
+        label: 'Targets & forecast',
+        icon: TrendingUp,
+        permission: 'dashboard.view',
+      },
+      { to: '/insights/reports', label: 'Reports', icon: FileBarChart, permission: 'report.view' },
+    ],
+  },
+  {
     title: 'Administration',
     items: [
       {
@@ -88,9 +158,27 @@ export const NAV: NavGroup[] = [
         icon: Settings,
         permission: 'settings.view',
       },
+      {
+        to: '/administration/users',
+        label: 'Users & roles',
+        icon: ShieldCheck,
+        permission: 'user.view',
+        finance: true,
+      },
+      {
+        to: '/administration/audit',
+        label: 'Audit log',
+        icon: ScrollText,
+        permission: 'audit.view',
+        finance: true,
+      },
     ],
   },
 ];
+
+/** mock-mode helper (role switcher); never loaded otherwise */
+const MockToolbar =
+  import.meta.env.MODE === 'mock' ? lazy(() => import('../mock/MockToolbar')) : null;
 
 type Theme = 'light' | 'dark' | 'system';
 const readTheme = (): Theme => {
@@ -116,8 +204,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const can = useCan();
   return (
     <nav aria-label="Main" className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
-      {NAV.map((g, gi) => {
-        const items = g.items.filter((i) => !i.permission || can(i.permission));
+      {NAV.filter((g) => FINANCE_UI || !g.finance).map((g, gi) => {
+        const items = g.items.filter(
+          (i) => (FINANCE_UI || !i.finance) && (!i.permission || can(i.permission)),
+        );
         if (items.length === 0) return null;
         return (
           <div key={gi}>
@@ -166,6 +256,11 @@ export function AppShell() {
 
   return (
     <div className="flex h-full bg-bg text-ink">
+      {MockToolbar && (
+        <Suspense fallback={null}>
+          <MockToolbar />
+        </Suspense>
+      )}
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded-md focus:bg-surface focus:px-3 focus:py-2"
@@ -278,7 +373,7 @@ export function AppShell() {
             </RMenu.Portal>
           </RMenu.Root>
         </header>
-        <main id="main" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto">
+        <main id="main" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto">
           <div
             key={location.pathname}
             className="page-enter mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8"
