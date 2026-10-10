@@ -14,10 +14,11 @@ import { cn } from '../lib/format';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-on-primary hover:bg-primary-hover',
-  secondary: 'bg-surface text-ink border border-line-strong hover:bg-surface-2',
-  ghost: 'text-ink hover:bg-surface-2',
-  danger: 'bg-danger text-white hover:opacity-90',
+  primary: 'bg-primary text-on-primary shadow-[var(--shadow-e1)] hover:bg-primary-hover',
+  secondary:
+    'bg-surface text-ink border border-line-strong hover:border-primary hover:bg-primary-soft hover:text-primary',
+  ghost: 'text-ink hover:bg-primary-soft hover:text-primary',
+  danger: 'bg-danger text-white shadow-[var(--shadow-e1)] hover:opacity-90',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -62,7 +63,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 /* ------------------------------ Form fields ------------------------------ */
 
 const control =
-  'w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-subtle disabled:bg-surface-2 disabled:text-muted aria-[invalid=true]:border-danger';
+  'w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink transition-colors placeholder:text-subtle hover:border-primary/60 focus:border-primary disabled:bg-surface-2 disabled:text-muted aria-[invalid=true]:border-danger';
 
 export interface FieldProps {
   label: string;
@@ -167,7 +168,7 @@ export function Card({ className, children }: { className?: string; children: Re
   return (
     <section
       className={cn(
-        'rounded-lg border border-line bg-surface shadow-[var(--shadow-e1)]',
+        'rounded-xl border border-line bg-surface shadow-[var(--shadow-e1)]',
         className,
       )}
     >
@@ -225,7 +226,7 @@ const TONES: Record<Tone, string> = {
   danger: 'bg-danger-bg text-danger',
   info: 'bg-info-bg text-info',
   neutral: 'bg-neutral-bg text-neutral',
-  brand: 'bg-primary text-on-primary',
+  brand: 'bg-primary-soft text-primary',
 };
 
 /** colour is never the only signal: the label carries the meaning */
@@ -268,7 +269,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-      {icon && <div className="rounded-full bg-surface-2 p-3 text-muted">{icon}</div>}
+      {icon && <div className="rounded-full bg-primary-soft p-3 text-primary">{icon}</div>}
       <h3 className="text-base font-semibold text-ink">{title}</h3>
       {description && <p className="max-w-md text-sm text-muted">{description}</p>}
       {action}

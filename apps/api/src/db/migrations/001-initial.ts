@@ -7,6 +7,12 @@ import '../models';
  * Idempotent: safe to run repeatedly. Indexes are never created implicitly by the app (`autoIndex: false`)
  * and `syncIndexes()` (which can DROP indexes) is never used in production.
  */
+/** indexes whose definition changed during development; dropped so they are rebuilt with the current definition */
+const SUPERSEDED_INDEXES: [collection: string, index: string][] = [
+  ['classes', 'institutionId_1_sequence_1'],
+  ['divisions', 'academicYearId_1_classId_1_name_1'],
+];
+
 export async function up(conn: Connection): Promise<{ collections: number; indexes: number }> {
   const existing = new Set((await conn.listCollections()).map((c) => c.name));
   let indexes = 0;
@@ -25,6 +31,15 @@ export async function up(conn: Connection): Promise<{ collections: number; index
         validationLevel: 'strict',
         validationAction: 'error',
       });
+    }
+    for (const [coll, index] of SUPERSEDED_INDEXES) {
+      if (coll !== def.collection) continue;
+      await conn
+        .db!.collection(coll)
+        .dropIndex(index)
+        .catch((e: { codeName?: string }) => {
+          if (e.codeName !== 'IndexNotFound' && e.codeName !== 'NamespaceNotFound') throw e;
+        });
     }
     await model.createIndexes();
     indexes += model.schema.indexes().length;

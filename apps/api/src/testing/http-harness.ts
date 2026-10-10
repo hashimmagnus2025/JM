@@ -1,7 +1,12 @@
 import { createLogger } from '../config/logger';
 import { createApp } from '../app';
+import {
+  ClassService,
+  DivisionService,
+  DivisionYearGuards,
+} from '../modules/academic/academic.service';
 import { IdentityService } from '../modules/identity/identity.service';
-import { NO_YEAR_GUARDS, type YearGuards } from '../modules/setup/ports';
+import { type YearGuards } from '../modules/setup/ports';
 import {
   AcademicYearService,
   CategoryService,
@@ -11,6 +16,8 @@ import {
 import { buildAuthHarness, type AuthHarness } from './auth-harness';
 import {
   MemoryCategoryRepo,
+  MemoryClassRepo,
+  MemoryDivisionRepo,
   MemoryInstitutionRepo,
   MemorySettingRepo,
   MemoryYearRepo,
@@ -19,6 +26,11 @@ import {
 export interface HttpHarness extends AuthHarness {
   app: ReturnType<typeof createApp>;
   identity: IdentityService;
+  academic: {
+    classes: ClassService;
+    divisions: DivisionService;
+    repos: { classes: MemoryClassRepo; divisions: MemoryDivisionRepo };
+  };
   setup: {
     institution: InstitutionService;
     settings: SettingsService;
@@ -54,7 +66,9 @@ export async function buildHttpHarness(
     categories: new MemoryCategoryRepo(),
   };
   // the guards are swappable so tests can pretend later phases (divisions, fees) already hold data
-  const guards = { current: NO_YEAR_GUARDS };
+  const classRepo = new MemoryClassRepo();
+  const divisionRepo = new MemoryDivisionRepo();
+  const guards: { current: YearGuards } = { current: new DivisionYearGuards(divisionRepo) };
   const delegating: YearGuards = {
     closeBlockers: (id) => guards.current.closeBlockers(id),
     hasData: (id) => guards.current.hasData(id),
@@ -65,6 +79,10 @@ export async function buildHttpHarness(
     years: new AcademicYearService(repos.years, h.audit, h.clock, delegating),
     categories: new CategoryService(repos.categories, h.audit, h.clock),
   };
+  const academic = {
+    classes: new ClassService(classRepo, divisionRepo, h.audit, h.clock),
+    divisions: new DivisionService(divisionRepo, classRepo, repos.years, h.audit, h.clock),
+  };
   const app = createApp({
     logger: createLogger('silent'),
     readiness: {},
@@ -72,6 +90,7 @@ export async function buildHttpHarness(
       auth: h.auth,
       identity,
       setup,
+      academic,
       routes: {
         secureCookies: false,
         loginRateLimit: { windowMs: 60_000, limit: opts.loginLimit ?? 1000 },
@@ -79,5 +98,10 @@ export async function buildHttpHarness(
       ...(opts.corsOrigins ? { corsOrigins: opts.corsOrigins } : {}),
     },
   });
-  return Object.assign(h, { app, identity, setup: { ...setup, repos, guards } });
+  return Object.assign(h, {
+    app,
+    identity,
+    setup: { ...setup, repos, guards },
+    academic: { ...academic, repos: { classes: classRepo, divisions: divisionRepo } },
+  });
 }

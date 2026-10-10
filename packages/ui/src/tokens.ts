@@ -4,17 +4,18 @@
  * Colour pairs are verified against WCAG AA in `tokens.test.ts`.
  */
 
+/** clean blue scale (white + blue interface); brand[600] gives white text 6.7:1 */
 export const brand = {
-  50: '#EAF6F2',
-  100: '#CFEBE2',
-  200: '#A2D7C7',
-  300: '#6FBDA7',
-  400: '#3FA088',
-  500: '#1F8670',
-  600: '#136D5B',
-  700: '#0F5748',
-  800: '#0C4439',
-  900: '#08302A',
+  50: '#EFF6FF',
+  100: '#DBEAFE',
+  200: '#BFDBFE',
+  300: '#93C5FD',
+  400: '#60A5FA',
+  500: '#2563EB',
+  600: '#1D4ED8',
+  700: '#1E40AF',
+  800: '#1E3A8A',
+  900: '#172554',
 } as const;
 
 export interface Palette {
@@ -29,6 +30,8 @@ export interface Palette {
   primary: string;
   onPrimary: string;
   primaryHover: string;
+  /** soft blue wash for selected / hovered items; `primary` text on it is AA-readable */
+  primarySoft: string;
   focus: string;
   success: string;
   successBg: string;
@@ -43,17 +46,18 @@ export interface Palette {
 }
 
 export const light: Palette = {
-  bg: '#F7F8F6',
+  bg: '#F5F8FD',
   surface: '#FFFFFF',
-  surface2: '#F0F3F1',
-  border: '#DDE3DF',
-  borderStrong: '#C3CDC8',
-  text: '#14201C',
-  textMuted: '#4F5F58',
-  textSubtle: '#5E6E67',
+  surface2: '#EEF3FA',
+  border: '#DCE5F1',
+  borderStrong: '#B4C3D9',
+  text: '#0F1B2D',
+  textMuted: '#44546B',
+  textSubtle: '#566680',
   primary: brand[600],
   onPrimary: '#FFFFFF',
   primaryHover: brand[700],
+  primarySoft: brand[50],
   focus: brand[500],
   success: '#17703F',
   successBg: '#E3F4EA',
@@ -61,41 +65,42 @@ export const light: Palette = {
   warningBg: '#FFF1D0',
   danger: '#B42318',
   dangerBg: '#FDE8E6',
-  info: '#1D5FA8',
-  infoBg: '#E5EFFB',
-  neutral: '#4F5F58',
-  neutralBg: '#EBEFED',
+  info: '#1D4ED8',
+  infoBg: '#E5EEFF',
+  neutral: '#475569',
+  neutralBg: '#EAEFF6',
 };
 
 export const dark: Palette = {
-  bg: '#0E1513',
-  surface: '#141D1A',
-  surface2: '#1A2521',
-  border: '#26332E',
-  borderStrong: '#374841',
-  text: '#E6EEEA',
-  textMuted: '#A3B5AC',
-  textSubtle: '#8FA198',
-  primary: '#4BB59B',
-  onPrimary: '#08302A',
-  primaryHover: '#6FC7B1',
-  focus: '#6FC7B1',
+  bg: '#0A1120',
+  surface: '#111A2D',
+  surface2: '#18243B',
+  border: '#24324D',
+  borderStrong: '#34476A',
+  text: '#E6ECF6',
+  textMuted: '#A5B3C9',
+  textSubtle: '#8F9FB8',
+  primary: '#6B9BFF',
+  onPrimary: '#0A1120',
+  primaryHover: '#8FB3FF',
+  primarySoft: '#16264A',
+  focus: '#8FB3FF',
   success: '#6FD6A0',
   successBg: '#13291E',
   warning: '#F0C066',
   warningBg: '#2E2410',
   danger: '#FF9C92',
   dangerBg: '#331614',
-  info: '#8DBBF2',
-  infoBg: '#12263D',
-  neutral: '#A3B5AC',
-  neutralBg: '#1F2A26',
+  info: '#9DBBFF',
+  infoBg: '#14264D',
+  neutral: '#A5B3C9',
+  neutralBg: '#1C2840',
 };
 
 /** colour-blind-safe categorical series (always paired with labels/patterns — never colour alone) */
 export const chart = [
-  '#136D5B',
-  '#2F5D9E',
+  '#1D4ED8',
+  '#0891B2',
   '#D69E2E',
   '#D9593D',
   '#7B61B8',
@@ -136,9 +141,9 @@ export const space = {
 } as const;
 export const radius = { sm: '6px', md: '8px', lg: '12px', xl: '16px' } as const;
 export const shadow = {
-  e1: '0 1px 2px rgb(16 32 27 / 6%)',
-  e2: '0 4px 12px rgb(16 32 27 / 8%)',
-  e3: '0 12px 32px rgb(16 32 27 / 14%)',
+  e1: '0 1px 2px rgb(15 27 45 / 6%)',
+  e2: '0 4px 14px rgb(15 27 45 / 8%)',
+  e3: '0 14px 36px rgb(15 27 45 / 16%)',
 } as const;
 export const motion = {
   fast: '120ms',

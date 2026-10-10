@@ -37,7 +37,8 @@ export const Class = defineModel({
   },
   indexes: [
     [{ institutionId: 1, code: 1 }, { unique: true }],
-    [{ institutionId: 1, sequence: 1 }, { unique: true }],
+    // display order only: reordering swaps several rows, so it is deliberately not unique
+    [{ institutionId: 1, sequence: 1 }],
   ],
 });
 
@@ -50,11 +51,13 @@ export const Division = defineModel({
     academicYearId: oid('AcademicYear'),
     classId: oid('Class'),
     name: str(),
-    capacity: { type: Number, min: 0 },
+    /** upper-cased name, so "a" and "A" are the same division */
+    nameKey: str(),
+    capacity: { type: Number, min: 1 },
     isActive: bool(true),
   },
   indexes: [
-    [{ academicYearId: 1, classId: 1, name: 1 }, { unique: true }],
+    [{ academicYearId: 1, classId: 1, nameKey: 1 }, { unique: true }],
     [{ academicYearId: 1, classId: 1, isActive: 1 }],
   ],
 });

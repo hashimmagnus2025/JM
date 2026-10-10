@@ -38,7 +38,7 @@ import {
 } from './ports';
 
 /** audit helper shared by the setup services */
-class Audited {
+export class Audited {
   constructor(
     protected readonly audit: AuditRecorder,
     protected readonly clock: Clock,

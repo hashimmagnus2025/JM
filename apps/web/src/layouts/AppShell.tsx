@@ -11,6 +11,7 @@ import {
   Moon,
   Settings,
   Sun,
+  LayoutGrid,
   Tags,
   X,
   type LucideIcon,
@@ -44,6 +45,18 @@ export const NAV: NavGroup[] = [
         label: 'Academic years',
         icon: CalendarRange,
         permission: 'academicYear.view',
+      },
+      {
+        to: '/academic/classes',
+        label: 'Classes',
+        icon: GraduationCap,
+        permission: 'class.view',
+      },
+      {
+        to: '/academic/divisions',
+        label: 'Divisions',
+        icon: LayoutGrid,
+        permission: 'division.view',
       },
       {
         to: '/academic/categories',

@@ -12,6 +12,15 @@ import {
   type SettingRepo,
   type StoredSetting,
 } from '../modules/setup/ports';
+import {
+  DuplicateDivisionError,
+  divisionKey,
+  type ClassRecord,
+  type ClassRepo,
+  type DivisionFilter,
+  type DivisionRecord,
+  type DivisionRepo,
+} from '../modules/academic/ports';
 
 const id = (): string => randomBytes(12).toString('hex');
 const tick = (): Promise<void> => new Promise((r) => setImmediate(r));
@@ -128,5 +137,91 @@ export class MemoryCategoryRepo implements CategoryRepo {
     if (!c) return null;
     Object.assign(c, patch);
     return clone(c);
+  }
+}
+
+export class MemoryClassRepo implements ClassRepo {
+  rows = new Map<string, ClassRecord>();
+  async list() {
+    await tick();
+    return clone([...this.rows.values()]);
+  }
+  async findById(i: string) {
+    await tick();
+    const c = this.rows.get(i);
+    return c ? clone(c) : null;
+  }
+  async create(c: Omit<ClassRecord, 'id'>) {
+    await tick();
+    if ([...this.rows.values()].some((x) => x.code === c.code)) throw new DuplicateCodeError();
+    const rec = { ...c, id: id() };
+    this.rows.set(rec.id, rec);
+    return clone(rec);
+  }
+  async update(i: string, patch: Parameters<ClassRepo['update']>[1]) {
+    await tick();
+    const c = this.rows.get(i);
+    if (!c) return null;
+    Object.assign(c, patch);
+    return clone(c);
+  }
+  async setSequences(order: readonly { id: string; sequence: number }[]) {
+    await tick();
+    for (const o of order) {
+      const c = this.rows.get(o.id);
+      if (c) c.sequence = o.sequence;
+    }
+  }
+}
+
+export class MemoryDivisionRepo implements DivisionRepo {
+  rows = new Map<string, DivisionRecord>();
+  async list(f: DivisionFilter = {}) {
+    await tick();
+    return clone(
+      [...this.rows.values()].filter(
+        (d) =>
+          (!f.academicYearId || d.academicYearId === f.academicYearId) &&
+          (!f.classId || d.classId === f.classId),
+      ),
+    );
+  }
+  async findById(i: string) {
+    await tick();
+    const d = this.rows.get(i);
+    return d ? clone(d) : null;
+  }
+  private clash(d: Pick<DivisionRecord, 'academicYearId' | 'classId' | 'name'>, ignore?: string) {
+    return [...this.rows.values()].some(
+      (x) =>
+        x.id !== ignore &&
+        x.academicYearId === d.academicYearId &&
+        x.classId === d.classId &&
+        divisionKey(x.name) === divisionKey(d.name),
+    );
+  }
+  async create(d: Omit<DivisionRecord, 'id'>) {
+    await tick();
+    if (this.clash(d)) throw new DuplicateDivisionError();
+    const rec = { ...d, id: id() };
+    this.rows.set(rec.id, rec);
+    return clone(rec);
+  }
+  async update(i: string, patch: Parameters<DivisionRepo['update']>[1]) {
+    await tick();
+    const d = this.rows.get(i);
+    if (!d) return null;
+    if (patch.name !== undefined && this.clash({ ...d, name: patch.name }, i))
+      throw new DuplicateDivisionError();
+    Object.assign(d, patch);
+    return clone(d);
+  }
+  async countByYear(yearId: string) {
+    await tick();
+    return [...this.rows.values()].filter((d) => d.academicYearId === yearId).length;
+  }
+  async countActiveByClass(classId: string) {
+    await tick();
+    return [...this.rows.values()].filter((d) => d.classId === classId && d.isActive).length;
   }
 }

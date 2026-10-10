@@ -14,6 +14,7 @@
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
   --color-focus: var(--focus);
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);

@@ -11,6 +11,12 @@ import {
 } from './modules/auth/mongo-repos';
 import { argon2Hasher, type PasswordHasher } from './modules/auth/password';
 import { PrincipalResolver } from './modules/auth/principal';
+import {
+  ClassService,
+  DivisionService,
+  DivisionYearGuards,
+} from './modules/academic/academic.service';
+import { MongoClassRepo, MongoDivisionRepo } from './modules/academic/mongo-repos';
 import { IdentityService } from './modules/identity/identity.service';
 import {
   MongoCategoryRepo,
@@ -70,6 +76,9 @@ export function composeApi(conn: Connection, institutionId: string, o: ComposeOp
     clock,
     principals,
   });
+  const yearRepo = new MongoYearRepo(conn, institutionId);
+  const classRepo = new MongoClassRepo(conn, institutionId);
+  const divisionRepo = new MongoDivisionRepo(conn, institutionId);
   const setup = {
     institution: new InstitutionService(
       new MongoInstitutionRepo(conn, institutionId),
@@ -77,13 +86,18 @@ export function composeApi(conn: Connection, institutionId: string, o: ComposeOp
       clock,
     ),
     settings: new SettingsService(new MongoSettingRepo(conn, institutionId), audit, clock),
-    years: new AcademicYearService(new MongoYearRepo(conn, institutionId), audit, clock),
+    years: new AcademicYearService(yearRepo, audit, clock, new DivisionYearGuards(divisionRepo)),
     categories: new CategoryService(new MongoCategoryRepo(conn, institutionId), audit, clock),
+  };
+  const academic = {
+    classes: new ClassService(classRepo, divisionRepo, audit, clock),
+    divisions: new DivisionService(divisionRepo, classRepo, yearRepo, audit, clock),
   };
   return {
     auth,
     identity,
     setup,
+    academic,
     routes: { secureCookies: o.secureCookies },
     ...(o.corsOrigins ? { corsOrigins: o.corsOrigins } : {}),
   };

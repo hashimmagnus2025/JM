@@ -10,6 +10,8 @@ const LoginPage = lazy(() => import('../pages/LoginPage'));
 const ChangePasswordPage = lazy(() => import('../pages/ChangePasswordPage'));
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 const AcademicYearsPage = lazy(() => import('../pages/AcademicYearsPage'));
+const ClassesPage = lazy(() => import('../pages/ClassesPage'));
+const DivisionsPage = lazy(() => import('../pages/DivisionsPage'));
 const CategoriesPage = lazy(() => import('../pages/CategoriesPage'));
 const InstitutionPage = lazy(() => import('../pages/InstitutionPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
@@ -88,6 +90,22 @@ export const router = createBrowserRouter([
         element: (
           <Guard permission="academicYear.view">
             <AcademicYearsPage />
+          </Guard>
+        ),
+      },
+      {
+        path: '/academic/classes',
+        element: (
+          <Guard permission="class.view">
+            <ClassesPage />
+          </Guard>
+        ),
+      },
+      {
+        path: '/academic/divisions',
+        element: (
+          <Guard permission="division.view">
+            <DivisionsPage />
           </Guard>
         ),
       },
