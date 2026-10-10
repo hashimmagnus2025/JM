@@ -31,6 +31,11 @@ import {
   type Division,
 } from '../features/academic/api';
 import { useYears, type AcademicYear } from '../features/setup/api';
+import { useTeachers, useYearAssignments, type Assignment } from '../features/teachers/api';
+import {
+  ClassTeacherDialog,
+  type TeacherDialogKind,
+} from '../features/teachers/ClassTeacherDialogs';
 import { friendlyMessage } from '../lib/messages';
 
 const capacityField = z
@@ -214,6 +219,7 @@ function ClassCard({
   onAdd,
   onEdit,
   onToggle,
+  teachers,
 }: {
   cls: ClassRow;
   divisions: Division[];
@@ -221,6 +227,13 @@ function ClassCard({
   onAdd: () => void;
   onEdit: (d: Division) => void;
   onToggle: (d: Division) => void;
+  /** class-teacher column; omitted when the user cannot see assignments */
+  teachers?: {
+    nameOf: (d: Division) => { assignment: Assignment; name: string } | null;
+    canAssign: boolean;
+    canChange: boolean;
+    onAction: (d: Division, kind: TeacherDialogKind) => void;
+  };
 }) {
   return (
     <Card>
@@ -248,17 +261,57 @@ function ClassCard({
                 <p className="text-xs text-muted">
                   {d.capacity ? `Capacity ${d.capacity}` : 'No capacity limit'}
                 </p>
+                {teachers && d.isActive && (
+                  <p className="mt-0.5 text-xs">
+                    {teachers.nameOf(d) ? (
+                      <span className="text-muted">
+                        Class teacher:{' '}
+                        <span className="font-medium text-ink">{teachers.nameOf(d)?.name}</span>
+                      </span>
+                    ) : (
+                      <span className="font-medium text-warning">No class teacher yet</span>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {!d.isActive && <Badge>Switched off</Badge>}
-                {editable && (
+                {(editable || teachers) && (
                   <ActionMenu
                     label={`Actions for ${cls.name} ${d.name}`}
                     items={[
-                      { label: 'Edit', onSelect: () => onEdit(d) },
+                      { label: 'Edit', onSelect: () => onEdit(d), hidden: !editable },
+                      {
+                        label: 'Assign class teacher',
+                        onSelect: () => teachers?.onAction(d, 'assign'),
+                        hidden:
+                          !teachers ||
+                          !editable ||
+                          !d.isActive ||
+                          !!teachers.nameOf(d) ||
+                          !teachers.canAssign,
+                      },
+                      {
+                        label: 'Change class teacher',
+                        onSelect: () => teachers?.onAction(d, 'change'),
+                        hidden:
+                          !teachers || !editable || !teachers.nameOf(d) || !teachers.canChange,
+                      },
+                      {
+                        label: 'End class teacher',
+                        onSelect: () => teachers?.onAction(d, 'end'),
+                        hidden:
+                          !teachers || !editable || !teachers.nameOf(d) || !teachers.canChange,
+                      },
+                      {
+                        label: 'Class teacher history',
+                        onSelect: () => teachers?.onAction(d, 'history'),
+                        hidden: !teachers,
+                      },
                       {
                         label: d.isActive ? 'Switch off' : 'Switch on',
                         onSelect: () => onToggle(d),
+                        hidden: !editable,
                       },
                     ]}
                   />
@@ -290,6 +343,17 @@ export default function DivisionsPage() {
     yearList.find((y) => y.status !== 'CLOSED') ??
     yearList[0];
   const divisions = useDivisions(year?.id);
+  const showTeachers = can('teacherAssignment.view') && can('teacher.view');
+  const teacherList = useTeachers({}, showTeachers);
+  const yearAssignments = useYearAssignments(showTeachers ? year?.id : undefined);
+  const [teacherDialog, setTeacherDialog] = useState<{
+    kind: TeacherDialogKind;
+    division: Division;
+  } | null>(null);
+  const teacherName = new Map((teacherList.data ?? []).map((t) => [t.id, t.fullName]));
+  const currentOf = new Map(
+    (yearAssignments.data ?? []).filter((a) => a.isCurrent).map((a) => [a.divisionId, a]),
+  );
   const editable = !!year && year.status !== 'CLOSED' && can('division.manage');
 
   const toggle = async (d: Division) => {
@@ -394,6 +458,25 @@ export default function DivisionsPage() {
                                   onAdd={() => setEditing({ division: 'new', classId: c.id })}
                                   onEdit={(d) => setEditing({ division: d })}
                                   onToggle={(d) => void toggle(d)}
+                                  {...(showTeachers && teacherList.data && yearAssignments.data
+                                    ? {
+                                        teachers: {
+                                          nameOf: (d: Division) => {
+                                            const a = currentOf.get(d.id);
+                                            return a
+                                              ? {
+                                                  assignment: a,
+                                                  name: teacherName.get(a.teacherId) ?? 'Teacher',
+                                                }
+                                              : null;
+                                          },
+                                          canAssign: can('teacherAssignment.assign'),
+                                          canChange: can('teacherAssignment.change'),
+                                          onAction: (division: Division, kind: TeacherDialogKind) =>
+                                            setTeacherDialog({ kind, division }),
+                                        },
+                                      }
+                                    : {})}
                                 />
                               ))}
                           </div>
@@ -415,6 +498,20 @@ export default function DivisionsPage() {
           division={editing.division}
           {...(editing.classId ? { presetClassId: editing.classId } : {})}
           onClose={() => setEditing(null)}
+        />
+      )}
+      {teacherDialog && year && teacherList.data && (
+        <ClassTeacherDialog
+          kind={teacherDialog.kind}
+          division={teacherDialog.division}
+          className={
+            (classes.data ?? []).find((c) => c.id === teacherDialog.division.classId)?.name ??
+            'Class'
+          }
+          year={year}
+          current={currentOf.get(teacherDialog.division.id)}
+          teachers={teacherList.data}
+          onClose={() => setTeacherDialog(null)}
         />
       )}
       {cloning && year && (

@@ -21,7 +21,7 @@ export function QueryBoundary<T>({
     return (
       <>
         {skeleton ?? (
-          <div className="space-y-3 p-5" aria-busy="true" aria-label="Loading">
+          <div className="space-y-3 p-5" role="status" aria-busy="true" aria-label="Loading">
             <Skeleton className="h-6 w-1/3" />
             <Skeleton className="h-10" />
             <Skeleton className="h-10" />

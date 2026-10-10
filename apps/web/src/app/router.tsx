@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 const AcademicYearsPage = lazy(() => import('../pages/AcademicYearsPage'));
 const ClassesPage = lazy(() => import('../pages/ClassesPage'));
 const DivisionsPage = lazy(() => import('../pages/DivisionsPage'));
+const TeachersPage = lazy(() => import('../pages/TeachersPage'));
 const CategoriesPage = lazy(() => import('../pages/CategoriesPage'));
 const InstitutionPage = lazy(() => import('../pages/InstitutionPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
@@ -106,6 +107,14 @@ export const router = createBrowserRouter([
         element: (
           <Guard permission="division.view">
             <DivisionsPage />
+          </Guard>
+        ),
+      },
+      {
+        path: '/academic/teachers',
+        element: (
+          <Guard permission="teacher.view">
+            <TeachersPage />
           </Guard>
         ),
       },

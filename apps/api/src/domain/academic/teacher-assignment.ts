@@ -291,3 +291,52 @@ export function teacherForYearView(
     during: teachersDuring(assignments, divisionId, year.startDate, year.endDate),
   };
 }
+
+/* ------------------------------ ending an assignment ------------------------------ */
+
+export interface EndInput {
+  current: TeacherAssignment;
+  year: AcademicYearRange;
+  /** last day the teacher is class teacher */
+  effectiveTo: BusinessDate;
+  reason: string;
+  endReason?: Extract<AssignmentEndReason, 'LEFT_INSTITUTION' | 'CORRECTION' | 'YEAR_END'>;
+}
+
+/** the division is left without a class teacher; the row is closed, never deleted */
+export function planEnd(input: EndInput): {
+  close: {
+    id: string;
+    effectiveTo: BusinessDate;
+    isCurrent: false;
+    endReason: AssignmentEndReason;
+  };
+} {
+  const { current } = input;
+  if (!current.isCurrent)
+    throw new AcademicError('ASSIGNMENT_NOT_CURRENT', 'Only the current assignment can be ended.');
+  if (current.academicYearId !== input.year.id)
+    throw new AcademicError(
+      'ASSIGNMENT_YEAR_MISMATCH',
+      'The assignment belongs to a different academic year.',
+    );
+  if (input.reason.trim().length < 3)
+    throw new AcademicError(
+      'ASSIGNMENT_CHANGE_INVALID',
+      'A reason is required to end the assignment.',
+    );
+  assertWithinYear(input.effectiveTo, input.year);
+  if (isBefore(input.effectiveTo, current.effectiveFrom))
+    throw new AcademicError(
+      'ASSIGNMENT_CHANGE_INVALID',
+      'The end date cannot be before the assignment started.',
+    );
+  return {
+    close: {
+      id: current.id,
+      effectiveTo: input.effectiveTo,
+      isCurrent: false,
+      endReason: input.endReason ?? 'LEFT_INSTITUTION',
+    },
+  };
+}

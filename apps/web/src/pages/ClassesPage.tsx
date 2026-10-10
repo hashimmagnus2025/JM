@@ -19,7 +19,9 @@ import {
   Switch,
 } from '../components/ui';
 import { useCan } from '../features/auth/auth';
+import { useCurrentYear } from '../features/setup/api';
 import {
+  useDivisions,
   useClasses,
   useCreateClass,
   useReorderClasses,
@@ -122,6 +124,11 @@ export default function ClassesPage() {
   const update = useUpdateClass();
   const reorder = useReorderClasses();
   const can = useCan();
+  const currentYear = useCurrentYear();
+  const yearId = currentYear.data?.id;
+  const divisions = useDivisions(can('division.view') ? yearId : undefined);
+  const divisionCount = (classId: string): number =>
+    (divisions.data ?? []).filter((d) => d.classId === classId && d.isActive).length;
   const manage = can('class.manage');
   const [editing, setEditing] = useState<ClassRow | 'new' | null>(null);
 
@@ -181,7 +188,12 @@ export default function ClassesPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-ink">{c.name}</p>
-                      <p className="text-xs text-muted">Code {c.code}</p>
+                      <p className="text-xs text-muted">
+                        Code {c.code}
+                        {divisions.data && currentYear.data
+                          ? ` · ${divisionCount(c.id)} division${divisionCount(c.id) === 1 ? '' : 's'} in ${currentYear.data.label}`
+                          : ''}
+                      </p>
                     </div>
                     <div className="hidden items-center gap-2 sm:flex">
                       {c.isFinal && <Badge tone="info">Last class</Badge>}

@@ -9,6 +9,7 @@ import {
   type DivisionRef,
   type TeacherAssignment,
   type TeacherRef,
+  planEnd,
 } from './teacher-assignment';
 
 const Y26: AcademicYearRange = { id: 'ay26', startDate: '2026-04-01', endDate: '2027-03-31' };
@@ -246,5 +247,37 @@ describe('historical context — the teacher of that period', () => {
     expect(teacherForYearView([old, ...all], '5A-25', Y25, '2026-10-08').teacher?.teacherId).toBe(
       'Z',
     );
+  });
+});
+
+describe('end an assignment — the division is left without a class teacher', () => {
+  const current = () => assign(div('d1'), teacher('t1'));
+  const base = () => ({
+    current: current(),
+    year: Y26,
+    effectiveTo: '2026-09-30',
+    reason: 'Resigned',
+  });
+
+  it('closes the row with an end date and reason code, never deleting it', () => {
+    expect(planEnd(base()).close).toEqual({
+      id: 'a-d1-t1',
+      effectiveTo: '2026-09-30',
+      isCurrent: false,
+      endReason: 'LEFT_INSTITUTION',
+    });
+  });
+  it('needs a reason, a date inside the year and not before the start', () => {
+    expect(code(() => planEnd({ ...base(), reason: ' ' }))).toBe('ASSIGNMENT_CHANGE_INVALID');
+    expect(code(() => planEnd({ ...base(), effectiveTo: '2027-04-01' }))).toBe(
+      'EFFECTIVE_DATE_OUTSIDE_YEAR',
+    );
+    expect(code(() => planEnd({ ...base(), effectiveTo: '2026-03-31' }))).toBe(
+      'EFFECTIVE_DATE_OUTSIDE_YEAR',
+    );
+  });
+  it('cannot end an assignment that is already closed', () => {
+    const closed = { ...current(), isCurrent: false };
+    expect(code(() => planEnd({ ...base(), current: closed }))).toBe('ASSIGNMENT_NOT_CURRENT');
   });
 });

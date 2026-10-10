@@ -11,6 +11,7 @@ import {
   Moon,
   Settings,
   Sun,
+  UserRound,
   LayoutGrid,
   Tags,
   X,
@@ -57,6 +58,12 @@ export const NAV: NavGroup[] = [
         label: 'Divisions',
         icon: LayoutGrid,
         permission: 'division.view',
+      },
+      {
+        to: '/academic/teachers',
+        label: 'Teachers',
+        icon: UserRound,
+        permission: 'teacher.view',
       },
       {
         to: '/academic/categories',

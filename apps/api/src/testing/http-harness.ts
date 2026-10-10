@@ -5,6 +5,8 @@ import {
   DivisionService,
   DivisionYearGuards,
 } from '../modules/academic/academic.service';
+import { AssignmentService, TeacherService } from '../modules/teachers/teacher.service';
+import { MemoryAssignmentRepo, MemoryTeacherRepo } from './memory-teacher-repos';
 import { IdentityService } from '../modules/identity/identity.service';
 import { type YearGuards } from '../modules/setup/ports';
 import {
@@ -30,6 +32,11 @@ export interface HttpHarness extends AuthHarness {
     classes: ClassService;
     divisions: DivisionService;
     repos: { classes: MemoryClassRepo; divisions: MemoryDivisionRepo };
+  };
+  teachers: {
+    teachers: TeacherService;
+    assignments: AssignmentService;
+    repos: { teachers: MemoryTeacherRepo; assignments: MemoryAssignmentRepo };
   };
   setup: {
     institution: InstitutionService;
@@ -83,6 +90,29 @@ export async function buildHttpHarness(
     classes: new ClassService(classRepo, divisionRepo, h.audit, h.clock),
     divisions: new DivisionService(divisionRepo, classRepo, repos.years, h.audit, h.clock),
   };
+  const teacherRepos = {
+    teachers: new MemoryTeacherRepo(),
+    assignments: new MemoryAssignmentRepo(),
+  };
+  const teachers = {
+    teachers: new TeacherService(
+      teacherRepos.teachers,
+      teacherRepos.assignments,
+      divisionRepo,
+      repos.years,
+      h.audit,
+      h.clock,
+    ),
+    assignments: new AssignmentService(
+      teacherRepos.assignments,
+      teacherRepos.teachers,
+      divisionRepo,
+      repos.years,
+      setup.settings,
+      h.audit,
+      h.clock,
+    ),
+  };
   const app = createApp({
     logger: createLogger('silent'),
     readiness: {},
@@ -91,6 +121,7 @@ export async function buildHttpHarness(
       identity,
       setup,
       academic,
+      teachers,
       routes: {
         secureCookies: false,
         loginRateLimit: { windowMs: 60_000, limit: opts.loginLimit ?? 1000 },
@@ -103,5 +134,6 @@ export async function buildHttpHarness(
     identity,
     setup: { ...setup, repos, guards },
     academic: { ...academic, repos: { classes: classRepo, divisions: divisionRepo } },
+    teachers: { ...teachers, repos: teacherRepos },
   });
 }

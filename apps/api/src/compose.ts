@@ -17,6 +17,8 @@ import {
   DivisionYearGuards,
 } from './modules/academic/academic.service';
 import { MongoClassRepo, MongoDivisionRepo } from './modules/academic/mongo-repos';
+import { MongoAssignmentRepo, MongoTeacherRepo } from './modules/teachers/mongo-repos';
+import { AssignmentService, TeacherService } from './modules/teachers/teacher.service';
 import { IdentityService } from './modules/identity/identity.service';
 import {
   MongoCategoryRepo,
@@ -79,13 +81,16 @@ export function composeApi(conn: Connection, institutionId: string, o: ComposeOp
   const yearRepo = new MongoYearRepo(conn, institutionId);
   const classRepo = new MongoClassRepo(conn, institutionId);
   const divisionRepo = new MongoDivisionRepo(conn, institutionId);
+  const teacherRepo = new MongoTeacherRepo(conn, institutionId);
+  const assignmentRepo = new MongoAssignmentRepo(conn, institutionId);
+  const settings = new SettingsService(new MongoSettingRepo(conn, institutionId), audit, clock);
   const setup = {
     institution: new InstitutionService(
       new MongoInstitutionRepo(conn, institutionId),
       audit,
       clock,
     ),
-    settings: new SettingsService(new MongoSettingRepo(conn, institutionId), audit, clock),
+    settings,
     years: new AcademicYearService(yearRepo, audit, clock, new DivisionYearGuards(divisionRepo)),
     categories: new CategoryService(new MongoCategoryRepo(conn, institutionId), audit, clock),
   };
@@ -93,11 +98,24 @@ export function composeApi(conn: Connection, institutionId: string, o: ComposeOp
     classes: new ClassService(classRepo, divisionRepo, audit, clock),
     divisions: new DivisionService(divisionRepo, classRepo, yearRepo, audit, clock),
   };
+  const teachers = {
+    teachers: new TeacherService(teacherRepo, assignmentRepo, divisionRepo, yearRepo, audit, clock),
+    assignments: new AssignmentService(
+      assignmentRepo,
+      teacherRepo,
+      divisionRepo,
+      yearRepo,
+      settings,
+      audit,
+      clock,
+    ),
+  };
   return {
     auth,
     identity,
     setup,
     academic,
+    teachers,
     routes: { secureCookies: o.secureCookies },
     ...(o.corsOrigins ? { corsOrigins: o.corsOrigins } : {}),
   };

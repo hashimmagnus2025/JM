@@ -8,8 +8,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Dedicated ports (API 4100, web 5174) keep the run away from anything else on the machine.
  */
 const mongo = process.env.E2E_MONGO_URI ?? '';
-const API_PORT = 4100;
-const WEB_PORT = 5174;
+const API_PORT = Number(process.env.E2E_API_PORT ?? 4100);
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5174);
 const WEB = `http://localhost:${WEB_PORT}`;
 
 export default defineConfig({
