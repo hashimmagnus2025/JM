@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pnpm build:preview",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
